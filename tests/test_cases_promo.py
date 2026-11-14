@@ -196,6 +196,14 @@ class TestStatePets(unittest.TestCase):
         for sid, sp in SPECIES.items():
             self.assertTrue(sp['title'] and sp['img'])
 
+    def test_where_flags(self):
+        # 'where' определяет вид неоткрытой карточки: chest — замок,
+        # promo — карточка скрыта целиком (webapp renderPets).
+        self.assertEqual(SPECIES['snow_leopard'].get('where'), 'promo')
+        chest = [sid for sid, sp in SPECIES.items() if sp.get('where') == 'chest']
+        self.assertEqual(sorted(chest),
+                         sorted(['dog', 'bunny', 'hamster', 'fox', 'duck', 'panda']))
+
 
 class TestDbPromo(unittest.IsolatedAsyncioTestCase):
     async def test_single_use(self):

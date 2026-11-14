@@ -109,8 +109,8 @@ def build_web_app(app, bot_token: str, webapp_html: str,
                                       'hint': 'Отправь боту /start'}, status=404)
         # meta: справочники для UI (виды питомцев + дропы сундуков).
         # Промокоды здесь НЕ публикуются — активация только на сервере.
-        species_meta = [{'id': sid, 'title': sp['title'],
-                         'img': sp['img'], 'faces': sp['faces']}
+        species_meta = [{'id': sid, 'title': sp['title'], 'img': sp['img'],
+                         'faces': sp['faces'], 'where': sp.get('where', '')}
                         for sid, sp in SPECIES.items()]
         return web.json_response({'pet': state, 'bot': app.bot_username,
                                   'meta': {'species': species_meta,

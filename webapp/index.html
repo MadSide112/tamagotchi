@@ -456,13 +456,13 @@ var SHOP = [
 ];
 var SPECIES_META = [
   {id:'cat',          title:'🐱 Кот',          img:'pet.png',              faces:true},
-  {id:'dog',          title:'🐶 Щенок',        img:'pet_dog.png',          faces:false},
-  {id:'bunny',        title:'🐰 Кролик',       img:'pet_bunny.png',        faces:false},
-  {id:'hamster',      title:'🐹 Хомяк',        img:'pet_hamster.png',      faces:false},
-  {id:'fox',          title:'🦊 Лисёнок',      img:'pet_fox.png',          faces:false},
-  {id:'duck',         title:'🦆 Утёнок',       img:'pet_duck.png',         faces:false},
-  {id:'panda',        title:'🐼 Панда',        img:'pet_panda.png',        faces:false},
-  {id:'snow_leopard', title:'🐆 Снежный барс', img:'pet_snow_leopard.png', faces:false}
+  {id:'dog',          title:'🐶 Щенок',        img:'pet_dog.png',          faces:false, where:'chest'},
+  {id:'bunny',        title:'🐰 Кролик',       img:'pet_bunny.png',        faces:false, where:'chest'},
+  {id:'hamster',      title:'🐹 Хомяк',        img:'pet_hamster.png',      faces:false, where:'chest'},
+  {id:'fox',          title:'🦊 Лисёнок',      img:'pet_fox.png',          faces:false, where:'chest'},
+  {id:'duck',         title:'🦆 Утёнок',       img:'pet_duck.png',         faces:false, where:'chest'},
+  {id:'panda',        title:'🐼 Панда',        img:'pet_panda.png',        faces:false, where:'chest'},
+  {id:'snow_leopard', title:'🐆 Снежный барс', img:'pet_snow_leopard.png', faces:false, where:'promo'}
 ];
 var CASES_META = [
   {id:'simple', title:'📦 Обычный сундук', price:50, desc:'монеты, еда и первые питомцы',
@@ -664,10 +664,12 @@ function renderPets() {
   var owned = pet ? (pet.pets || []) : [];
   SPECIES_META.forEach(function(sp) {
     var has = owned.indexOf(sp.id) >= 0;
+    if (!has && sp.where === 'promo') return;  // промо-питомцы скрыты, пока не получены
     var card = document.createElement('div');
     card.className = 'petcard' + (has ? '' : ' locked');
     var img = document.createElement('img');
     img.src = '/assets/' + sp.img; img.alt = '';
+    img.loading = 'lazy'; img.decoding = 'async';
     card.appendChild(img);
     var nm = document.createElement('div');
     nm.textContent = sp.title;

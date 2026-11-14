@@ -13,13 +13,20 @@ frame in the UI.
 
 SPECIES = {
     'cat':          {'title': '🐱 Кот',          'img': 'pet.png',              'faces': True},
-    'dog':          {'title': '🐶 Щенок',        'img': 'pet_dog.png',          'faces': False},
-    'bunny':        {'title': '🐰 Кролик',       'img': 'pet_bunny.png',        'faces': False},
-    'hamster':      {'title': '🐹 Хомяк',        'img': 'pet_hamster.png',      'faces': False},
-    'fox':          {'title': '🦊 Лисёнок',      'img': 'pet_fox.png',          'faces': False},
-    'duck':         {'title': '🦆 Утёнок',       'img': 'pet_duck.png',         'faces': False},
-    'panda':        {'title': '🐼 Панда',        'img': 'pet_panda.png',        'faces': False},
-    'snow_leopard': {'title': '🐆 Снежный барс', 'img': 'pet_snow_leopard.png', 'faces': False},
+    'dog':          {'title': '🐶 Щенок',        'img': 'pet_dog.png',          'faces': False,
+                     'where': 'chest'},
+    'bunny':        {'title': '🐰 Кролик',       'img': 'pet_bunny.png',        'faces': False,
+                     'where': 'chest'},
+    'hamster':      {'title': '🐹 Хомяк',        'img': 'pet_hamster.png',      'faces': False,
+                     'where': 'chest'},
+    'fox':          {'title': '🦊 Лисёнок',      'img': 'pet_fox.png',          'faces': False,
+                     'where': 'chest'},
+    'duck':         {'title': '🦆 Утёнок',       'img': 'pet_duck.png',         'faces': False,
+                     'where': 'chest'},
+    'panda':        {'title': '🐼 Панда',        'img': 'pet_panda.png',        'faces': False,
+                     'where': 'chest'},
+    'snow_leopard': {'title': '🐆 Снежный барс', 'img': 'pet_snow_leopard.png', 'faces': False,
+                     'where': 'promo'},
 }
 
 DEFAULT_SPECIES = 'cat'
