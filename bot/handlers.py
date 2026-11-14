@@ -84,12 +84,13 @@ def classify(msg: dict, bot_username: str, bot_id: int):
 
 class App:
     def __init__(self, api: TelegramApi, db: Db, widget_html: str,
-                 bot_username: str, bot_id: int) -> None:
+                 bot_username: str, bot_id: int, web_app_url: str = '') -> None:
         self.api = api
         self.db = db
         self.widget_html = widget_html
         self.bot_username = bot_username
         self.bot_id = bot_id
+        self.web_app_url = web_app_url
         self._locks: Dict[int, asyncio.Lock] = {}
 
     def _lock(self, user_id: int) -> asyncio.Lock:
@@ -188,6 +189,38 @@ class App:
     async def _action(self, user_id: int, chat_id: int, action: str, arg: str = '') -> None:
         await self._run_action(user_id, chat_id, action, arg)
 
+    async def web_action(self, user_id: int, action: str, arg: str = ''):
+        """Care action coming from the Mini App (authenticated via initData).
+
+        Same pipeline as chat commands (tick, streak, apply, save, widget edit),
+        but without Telegram messages: the HTTP response carries the result.
+        Returns (public_state_dict, message) or (None, hint) when no pet exists.
+        """
+        async with self._lock(user_id):
+            row = await self.db.get_pet(user_id)
+            if row is None:
+                return None, 'Сначала заведи питомца: /start 🐣'
+            now = int(time.time())
+            st = PetState.from_json(row['state'])
+            events = engine.tick(st, now)
+            bonus = engine.update_streak(st, now)
+            st, message, changed = engine.apply(st, action, arg, now)
+            if changed:
+                st.rev += 1
+            if bonus:
+                message = (message + '\n' if message else '') + \
+                    '🔥 Стрик %d: +%d🪙' % (st.streak, bonus)
+                changed = True
+            if row['message_id'] and changed:
+                try:
+                    await self.api.edit_widget_data(row['chat_id'], row['message_id'],
+                                                    st.to_json())
+                except ApiError as err:
+                    log.warning('editMessageWidgetData failed: %s', err.description)
+            await self.db.save_pet(user_id, row['chat_id'], row['message_id'],
+                                   st.to_json(), row['warn_ts'], row['sick_warn'], now)
+            return st.public_dict(), message
+
     # --- /start flow --------------------------------------------------------
 
     async def _send_pet(self, user_id: int, chat_id: int, ref_arg: str = '') -> None:
@@ -211,13 +244,18 @@ class App:
                                                  WIDGET_CAPTION)
             except ApiError as err:
                 log.error('sendWidget failed for chat %s: %s', chat_id, err.description)
+                reply_markup = None
+                if self.web_app_url:
+                    reply_markup = {'inline_keyboard': [[
+                        {'text': '🐣 Открыть питомца', 'web_app': {'url': self.web_app_url}}
+                    ]]}
                 await self.api.send_message(
                     chat_id,
                     'Питомец готов, но Telegram пока не пускает обычных ботов к виджетам '
                     '(ограничение сервера с 13.11.2026, INPUT_MEDIA_WIDGET_NOT_ALLOWED).\n'
-                    'Но играть можно прямо в чате: /feed /play /sleep /pet /clean '
-                    '/shop /buy /wear /top!\nВиджет заработает, когда Telegram снова '
-                    'откроет доступ — просто отправь /start.')
+                    'Играй через кнопку ниже или командами: /feed /play /sleep /pet /clean '
+                    '/shop /buy /wear /top!',
+                    reply_markup=reply_markup)
                 # persist the pet even without a widget: text-mode care commands
                 # (feed/clean/heal/...) must work regardless of widget availability
                 await self.db.save_pet(user_id, chat_id, None, st.to_json(), 0, 0, now)

@@ -76,6 +76,10 @@ class TelegramApi:
     async def set_my_commands(self, commands: List[dict]) -> None:
         await self.call('setMyCommands', commands=commands)
 
+    async def set_chat_menu_button(self, menu_button: dict) -> None:
+        # without chat_id sets the default menu button for all chats
+        await self.call('setChatMenuButton', menu_button=menu_button)
+
     # --- widgets (Bot API 10.4) ----------------------------------------
 
     async def send_widget(self, chat_id: int, html: str, chat_data: str, caption: str) -> dict:
@@ -106,8 +110,12 @@ class TelegramApi:
 
     # --- messages -------------------------------------------------------
 
-    async def send_message(self, chat_id: int, text: str) -> None:
-        await self.call('sendMessage', chat_id=chat_id, text=text)
+    async def send_message(self, chat_id: int, text: str,
+                           reply_markup: Optional[dict] = None) -> None:
+        params: dict = {'chat_id': chat_id, 'text': text}
+        if reply_markup is not None:
+            params['reply_markup'] = reply_markup
+        await self.call('sendMessage', **params)
 
     async def pin_message(self, chat_id: int, message_id: int) -> None:
         try:
