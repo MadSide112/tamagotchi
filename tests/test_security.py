@@ -16,6 +16,9 @@ def make_init_data(user=USER, token=BOT_TOKEN, auth_age=0, tamper=None):
     params = {
         'auth_date': str(int(time.time()) - auth_age),
         'query_id': 'AAF123',
+        # real clients include an Ed25519 signature field and it participates
+        # in the check string (verified against a live payload)
+        'signature': 'sig_base64_like_value',
         'user': json.dumps(user),
     }
     check_string = '\n'.join('%s=%s' % (k, v) for k, v in sorted(params.items()))

@@ -36,7 +36,11 @@ def validate_init_data_verbose(init_data: str, bot_token: str,
     data_check_string = '\n'.join(
         f'{key}={value}'
         for key, value in sorted(pairs.items())
-        if key not in ('hash', 'signature')
+        if key != 'hash'
+        # NB: the 'signature' field IS included in the check string —
+        # verified empirically against a real payload from Telegram clients
+        # (tools/test_signature_variants.py); the old docs excluded it, but
+        # current clients sign the string with signature included.
     )
     secret_key = hmac.new(b'WebAppData', bot_token.encode('utf-8'), hashlib.sha256).digest()
     calculated = hmac.new(secret_key, data_check_string.encode('utf-8'),
