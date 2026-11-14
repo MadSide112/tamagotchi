@@ -27,51 +27,34 @@ WEB_PORT = 8321
 MENU_BUTTON_TEXT = '🐣 Питомец'
 
 
-async def start_tunnel(port: int):
-    """Open an SSH reverse tunnel via localhost.run; return (proc, public_url).
-
-    localhost.run terminates TLS and gives a valid public HTTPS URL without
-    an account; cloudflared is unusable here (edge TLS handshake is cut).
-    """
-    args = [
-        'ssh', '-o', 'StrictHostKeyChecking=accept-new',
-        '-o', 'ServerAliveInterval=30', '-o', 'ServerAliveCountMax=3',
-        '-o', 'ExitOnForwardFailure=yes',
-        '-R', '80:127.0.0.1:%d' % port, 'nokey@localhost.run',
-    ]
-    proc = await asyncio.create_subprocess_exec(
-        *args, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT)
-
-    holder = {'url': ''}
-
-    async def drain() -> None:
-        # must keep reading forever: if the pipe fills, ssh freezes
-        while True:
-            line = await proc.stdout.readline()
-            if not line:
-                return
-            text = line.decode(errors='ignore')
-            if not holder['url']:
-                for token in text.split():
-                    if token.startswith('https://') and '.lhr.life' in token:
-                        holder['url'] = token.rstrip('.,')
-                        return
-
-    async def wait_url() -> str:
-        while not holder['url']:
-            await asyncio.sleep(0.5)
-        return holder['url']
-
-    drain_task = asyncio.create_task(drain())
+def read_tunnel_url(root: pathlib.Path) -> str:
     try:
-        url = await asyncio.wait_for(wait_url(), timeout=45)
-    except asyncio.TimeoutError:
-        url = ''
-    if not url:
-        logging.warning('туннель не поднялся (localhost.run недоступен?)')
-        return proc, ''
-    logging.info('туннель: %s', url)
-    return proc, url
+        return (root / 'data' / 'tunnel_url').read_text(encoding='utf-8').strip()
+    except OSError:
+        return ''
+
+
+async def refresh_menu_button(api: TelegramApi, root: pathlib.Path,
+                              app: App, interval: int = 10) -> None:
+    """Watch data/tunnel_url (maintained by tools/tunnel_keepalive.py) and
+    keep the bot's default menu button pointing at the live Mini App URL."""
+    last = ''
+    while True:
+        url = read_tunnel_url(root)
+        if url:
+            full = url + '/app'
+            if full != last:
+                try:
+                    await api.set_chat_menu_button({
+                        'type': 'web_app', 'text': MENU_BUTTON_TEXT,
+                        'web_app': {'url': full},
+                    })
+                    app.web_app_url = full
+                    last = full
+                    logging.info('menu button -> %s', full)
+                except ApiError as err:
+                    logging.warning('setChatMenuButton failed: %s', err.description)
+        await asyncio.sleep(interval)
 
 
 async def amain() -> None:
@@ -88,9 +71,6 @@ async def amain() -> None:
     widget_html = (root / 'widget' / 'template.html').read_text(encoding='utf-8')
     webapp_html = (root / 'webapp' / 'index.html').read_text(encoding='utf-8')
     db = Db(str(root / 'data' / 'tamagotchi.db'))
-
-    tunnel_proc, public_url = await start_tunnel(WEB_PORT)
-    web_app_url = (public_url + '/app') if public_url else ''
 
     async with TelegramApi(token, proxy) as api:
         delay = 2
@@ -109,22 +89,15 @@ async def amain() -> None:
         logging.info('bot @%s online', me['username'])
         await api.set_my_commands(BOT_COMMANDS)
         app = App(api, db, widget_html, bot_username=me['username'], bot_id=me['id'],
-                  web_app_url=web_app_url)
-        runner = None
-        if public_url:
-            runner = await run_web_server(app, token, webapp_html, WEB_PORT)
-            await api.set_chat_menu_button({
-                'type': 'web_app', 'text': MENU_BUTTON_TEXT,
-                'web_app': {'url': web_app_url},
-            })
-            logging.info('Mini App: %s (кнопка меню «%s»)', web_app_url, MENU_BUTTON_TEXT)
+                  web_app_url='')
+        runner = await run_web_server(app, token, webapp_html, WEB_PORT)
+        logging.info('web server ready on port %d (waiting for tunnel url)', WEB_PORT)
+        refresher = asyncio.create_task(refresh_menu_button(api, root, app))
         try:
             await run_polling(app)
         finally:
-            if runner:
-                await runner.cleanup()
-            if tunnel_proc and tunnel_proc.returncode is None:
-                tunnel_proc.terminate()
+            refresher.cancel()
+            await runner.cleanup()
 
 
 if __name__ == '__main__':

@@ -9,7 +9,7 @@ with the bot token) — the same server-authoritative pipeline as chat commands.
 import logging
 from aiohttp import web
 
-from bot.security import validate_init_data
+from bot.security import validate_init_data, validate_init_data_verbose
 from game import engine
 
 log = logging.getLogger('tg.server')
@@ -32,8 +32,10 @@ def build_web_app(app, bot_token: str, webapp_html: str) -> web.Application:
             body = await request.json()
         except Exception:
             return web.json_response({'error': 'bad json'}, status=400)
-        user_id = validate_init_data(str(body.get('initData', '')), bot_token)
+        user_id, reason = validate_init_data_verbose(str(body.get('initData', '')), bot_token)
         if user_id is None:
+            log.warning('initData rejected: %s (len=%d)',
+                        reason, len(str(body.get('initData', ''))))
             return web.json_response({'error': 'unauthorized',
                                       'hint': 'Открой приложение через бота в Telegram'},
                                      status=401)
