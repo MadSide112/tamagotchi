@@ -41,8 +41,7 @@ HELP_TEXT = (
     '/shop — магазин · /buy <id> — купить\n'
     '/wear <id>|off — надеть аксессуар\n'
     '/name <имя> — переименовать\n'
-    '/stats — статы · /top — лидерборд\n'
-    '/newpet — начать заново'
+    '/stats — статы · /top — лидерборд'
 )
 GROUP_HINT = 'Я тамагочи-бот 🐣 Питомец заводится в личке — напиши мне /start.'
 
@@ -113,9 +112,7 @@ class App:
         private = msg['chat']['type'] == 'private'
         if kind == 'command':
             if cmd == 'start':
-                await self._send_pet(user_id, chat_id, reset=False, ref_arg=args)
-            elif cmd == 'newpet':
-                await self._send_pet(user_id, chat_id, reset=True)
+                await self._send_pet(user_id, chat_id, ref_arg=args)
             elif cmd == 'feed':
                 await self._action(user_id, chat_id, 'feed', args.strip().lower())
             elif cmd == 'clean':
@@ -193,22 +190,17 @@ class App:
 
     # --- /start flow --------------------------------------------------------
 
-    async def _send_pet(self, user_id: int, chat_id: int, reset: bool,
-                        ref_arg: str = '') -> None:
+    async def _send_pet(self, user_id: int, chat_id: int, ref_arg: str = '') -> None:
         async with self._lock(user_id):
             now = int(time.time())
             row = await self.db.get_pet(user_id)
             ref_id = self._parse_ref(ref_arg)
-            fresh = row is None or reset
+            fresh = row is None
             if row:
                 if row['message_id']:
                     await self.api.delete_message(chat_id, row['message_id'])
-                if reset:
-                    st = PetState.create('Пуся', now, START_COINS,
-                                         {'apple': START_APPLES})
-                else:
-                    st = PetState.from_json(row['state'])
-                    engine.tick(st, now)
+                st = PetState.from_json(row['state'])
+                engine.tick(st, now)
             else:
                 st = PetState.create('Пуся', now, START_COINS, {'apple': START_APPLES})
                 if ref_id and ref_id != user_id and await self.db.get_pet(ref_id):

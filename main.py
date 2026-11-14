@@ -14,7 +14,7 @@ BOT_COMMANDS = [
     {'command': 'start', 'description': 'Завести питомца'},
     {'command': 'name', 'description': 'Переименовать питомца'},
     {'command': 'stats', 'description': 'Показать статы'},
-    {'command': 'newpet', 'description': 'Начать заново'},
+    {'command': 'top', 'description': 'Лидерборд'},
     {'command': 'help', 'description': 'Что умеет бот'},
 ]
 
