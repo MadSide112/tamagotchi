@@ -25,7 +25,7 @@ document.documentElement.style.setProperty('--tg-theme-button-color','#2f9ce0');
 document.documentElement.style.setProperty('--tg-theme-secondary-bg-color','#eef3f8');
 document.documentElement.style.setProperty('--tg-theme-destructive-text-color','#e0482f');
 const DEMO_ANSWER = JSON.stringify({m:'🚧 Это демо-превью: игра живёт в Telegram, у бота @madNIMbot'});
-window.TelegramWidget={chatData:{"r": 1, "n": "Пуся", "h": 82, "m": 64, "e": 90, "sl": 0, "sk": 0, "s": 4, "cn": 42, "wn": "hat"},
+window.TelegramWidget={chatData:JSON.stringify({"r": 1, "n": "Пуся", "h": 82, "m": 64, "e": 90, "sl": 0, "sk": 0, "s": 4, "cn": 42, "wn": "hat"}),
 request:a=>new Promise(res=>setTimeout(()=>res({result:DEMO_ANSWER}),350)),
 onEvent(){},ready(){},HapticFeedback:{notificationOccurred(){}}};
 </script>

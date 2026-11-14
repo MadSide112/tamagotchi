@@ -20,7 +20,7 @@ document.documentElement.style.setProperty('--tg-theme-button-color','#2f9ce0');
 document.documentElement.style.setProperty('--tg-theme-secondary-bg-color','#eef3f8');
 document.documentElement.style.setProperty('--tg-theme-destructive-text-color','#e0482f');
 const DEMO_ANSWER = JSON.stringify({m:'🚧 Это демо-превью: игра живёт в Telegram, у бота @madNIMbot'});
-window.TelegramWidget={chatData:__CHAT_DATA__,
+window.TelegramWidget={chatData:JSON.stringify(__CHAT_DATA__),
 request:a=>new Promise(res=>setTimeout(()=>res({result:DEMO_ANSWER}),350)),
 onEvent(){},ready(){},HapticFeedback:{notificationOccurred(){}}};
 </script>'''
@@ -55,8 +55,8 @@ __TEMPLATE__
 
 def main() -> None:
     template = (ROOT / 'widget' / 'template.html').read_text(encoding='utf-8')
-    stub = STUB_TEMPLATE.replace('__CHAT_DATA__',
-                                 json.dumps(DEMO_STATE, ensure_ascii=False))
+    state_json = json.dumps(DEMO_STATE, ensure_ascii=False)
+    stub = STUB_TEMPLATE.replace('__CHAT_DATA__', state_json)
     page = PAGE_TEMPLATE.replace('__STUB__', stub).replace('__TEMPLATE__', template)
     out = ROOT / 'docs' / 'index.html'
     out.write_text(page, encoding='utf-8')
