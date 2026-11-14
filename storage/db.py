@@ -37,6 +37,12 @@ class Db:
         if 'sick_warn' not in cols:
             self._conn.execute(
                 'ALTER TABLE pets ADD COLUMN sick_warn INTEGER NOT NULL DEFAULT 0')
+        # single-use promo codes (game/promo.py); CREATE в _migrate, а не в
+        # _SCHEMA: execute() выполняет только один statement
+        self._conn.execute(
+            'CREATE TABLE IF NOT EXISTS promo_used ('
+            'user_id INTEGER NOT NULL, code TEXT NOT NULL, ts INTEGER NOT NULL, '
+            'PRIMARY KEY (user_id, code))')
 
     def _run(self, sql: str, params: tuple = (), fetch: str = ''):
         with self._lock:
@@ -100,3 +106,19 @@ class Db:
         rows = await asyncio.to_thread(
             self._run, 'SELECT user_id FROM pets ORDER BY updated_at ASC', (), 'all')
         return [r[0] for r in rows or []]
+
+    async def promo_redeemed(self, user_id: int, code: str) -> bool:
+        row = await asyncio.to_thread(
+            self._run,
+            'SELECT 1 FROM promo_used WHERE user_id = ? AND code = ?',
+            (user_id, code),
+            'one',
+        )
+        return row is not None
+
+    async def promo_mark(self, user_id: int, code: str, ts: int) -> None:
+        await asyncio.to_thread(
+            self._run,
+            'INSERT OR IGNORE INTO promo_used(user_id, code, ts) VALUES(?,?,?)',
+            (user_id, code, ts),
+        )

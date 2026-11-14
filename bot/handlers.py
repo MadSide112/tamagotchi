@@ -25,6 +25,7 @@ from game.balance import (
     START_COINS,
     STAGE_NAMES,
 )
+from game.promo import normalize as promo_normalize
 from game.state import PetState
 from storage.db import Db
 
@@ -222,9 +223,17 @@ class App:
             st = PetState.from_json(row['state'])
             events = engine.tick(st, now)
             bonus = engine.update_streak(st, now)
+            if action == 'promo':
+                arg = promo_normalize(arg)
+                if not arg:
+                    return st.web_dict(), 'Введи промокод'
+                if await self.db.promo_redeemed(user_id, arg):
+                    return st.web_dict(), 'Этот промокод уже активирован 🙈'
             st, message, changed = engine.apply(st, action, arg, now)
             if changed:
                 st.rev += 1
+                if action == 'promo':
+                    await self.db.promo_mark(user_id, arg, now)
             if bonus:
                 message = (message + '\n' if message else '') + \
                     '🔥 Стрик %d: +%d🪙' % (st.streak, bonus)

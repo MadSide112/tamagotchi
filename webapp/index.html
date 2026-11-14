@@ -214,6 +214,43 @@
     font-weight: 700;
   }
 
+  /* --- chests / pets / promo --- */
+  .chestrow { display: flex; align-items: center; gap: 10px; }
+  .chestrow .info { flex: 1; min-width: 0; }
+  .chestrow .ct { font-size: 14px; font-weight: 700; }
+  .chestrow .cd { font-size: 11px; color: var(--ink-soft); font-weight: 700; }
+  .drops { margin-top: 8px; font-size: 11.5px; font-weight: 700;
+           color: var(--ink-soft); line-height: 1.7; }
+  .petgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+  .petcard {
+    background: var(--cream); border-radius: 14px; padding: 8px 4px 7px;
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    font-size: 11px; font-weight: 700; text-align: center;
+  }
+  .petcard img { width: 100%; max-width: 64px; }
+  .petcard.locked { opacity: .45; }
+  .petcard .sel {
+    border: none; border-radius: 10px; padding: 5px 10px; margin-top: 2px;
+    font-family: inherit; font-weight: 700; font-size: 11px; cursor: pointer;
+    background: var(--mint); color: var(--ink);
+  }
+  .petcard .sel:active { transform: scale(.95); }
+  .petcard .sel.active { background: var(--coral); color: #fff; }
+  .petcard .lock { font-size: 10px; color: var(--ink-soft); }
+  .promorow { display: flex; gap: 8px; margin-top: 10px; }
+  .promorow input {
+    flex: 1; min-width: 0; border: 2px solid #F0E4D6; border-radius: 12px;
+    background: var(--cream); padding: 9px 12px; font-family: inherit;
+    font-size: 13px; font-weight: 700; color: var(--ink); text-transform: uppercase;
+  }
+  .promorow input:focus { outline: none; border-color: var(--pink); }
+  .promorow button {
+    border: none; border-radius: 12px; padding: 9px 14px; font-family: inherit;
+    font-weight: 700; font-size: 12.5px; cursor: pointer;
+    background: var(--pink); color: #fff; white-space: nowrap;
+  }
+  .promorow button:active { transform: scale(.96); }
+
   .strow { display: flex; justify-content: space-between; gap: 10px;
            padding: 6px 0; font-size: 13.5px; font-weight: 700; }
   .strow .v { color: var(--ink-soft); text-align: right; }
@@ -277,7 +314,7 @@
         <img class="roomimg" src="/assets/room.png" alt="">
         <div class="egg" id="eggBox" hidden>🥚</div>
         <div class="petwrap" id="petWrap" hidden>
-          <img class="petbase" src="/assets/pet.png" alt="">
+          <img class="petbase" id="petBase" src="/assets/pet.png" alt="">
           <div id="accLayer"></div>
         </div>
         <div class="petstatus" id="petStatus" hidden><img src="/assets/face_1.png" alt="" id="petFace"></div>
@@ -325,16 +362,22 @@
         <div id="shopList"></div>
       </div>
       <div class="card">
+        <h2>🐾 Мои питомцы</h2>
+        <div class="muted">Новых выбивай в сундуках 📦 или получай по промокоду 🎟 (вкладка «Друзья»). Активный живёт в комнате.</div>
+        <div class="petgrid" id="petGrid"></div>
+      </div>
+      <div class="card">
         <h2>🎒 Инвентарь</h2>
         <div class="invline" id="invLine">пусто</div>
       </div>
     </section>
 
-    <!-- TOP -->
-    <section class="view" id="view-top">
+    <!-- CHESTS -->
+    <section class="view" id="view-chests">
       <div class="card">
-        <h2>🏆 Топ попечителей</h2>
-        <div id="topList" class="muted">Загрузка…</div>
+        <h2>📦 Сундуки · <span id="chestsCoins">0</span>🪙</h2>
+        <div class="muted">Питомцы, монеты, еда и наряды. Что выпадет — решает сервер.</div>
+        <div id="chestsList" style="margin-top:10px"></div>
       </div>
     </section>
 
@@ -347,6 +390,18 @@
         <div class="muted">Друг вводит твой код боту — вы оба получаете <b>+50🪙</b>.</div>
         <button class="copybtn" id="copyBtn">📋 Скопировать ссылку-приглашение</button>
         <div class="linkbox" id="refLink"></div>
+      </div>
+      <div class="card">
+        <h2>🎟 Промокод</h2>
+        <div class="muted">Введи промокод — получишь монеты или нового питомца.</div>
+        <div class="promorow">
+          <input id="promoInput" placeholder="КОД" maxlength="24" autocomplete="off">
+          <button id="promoBtn">Активировать</button>
+        </div>
+      </div>
+      <div class="card">
+        <h2>🏆 Топ попечителей</h2>
+        <div id="topList" class="muted">Загрузка…</div>
       </div>
     </section>
 
@@ -372,7 +427,7 @@
   <nav>
     <button class="tab active" onclick="showTab('home', this)"><span class="tico">🏠</span>Дом</button>
     <button class="tab" onclick="showTab('shop', this)"><span class="tico">🛒</span>Магазин</button>
-    <button class="tab" onclick="showTab('top', this)"><span class="tico">🏆</span>Топ</button>
+    <button class="tab" onclick="showTab('chests', this)"><span class="tico">📦</span>Сундуки</button>
     <button class="tab" onclick="showTab('friends', this)"><span class="tico">🎁</span>Друзья</button>
     <button class="tab" onclick="showTab('stats', this)"><span class="tico">📊</span>Статы</button>
   </nav>
@@ -399,6 +454,25 @@ var SHOP = [
   {id:'scarf',   title:'🧣 Шарф',      price:35, kind:'accessory', desc:'наряд',                       ico:'scarf.png'},
   {id:'hat',     title:'🎩 Шляпа',     price:50, kind:'accessory', desc:'наряд',                       ico:'hat.png'}
 ];
+var SPECIES_META = [
+  {id:'cat',          title:'🐱 Кот',          img:'pet.png',              faces:true},
+  {id:'dog',          title:'🐶 Щенок',        img:'pet_dog.png',          faces:false},
+  {id:'bunny',        title:'🐰 Кролик',       img:'pet_bunny.png',        faces:false},
+  {id:'hamster',      title:'🐹 Хомяк',        img:'pet_hamster.png',      faces:false},
+  {id:'fox',          title:'🦊 Лисёнок',      img:'pet_fox.png',          faces:false},
+  {id:'duck',         title:'🦆 Утёнок',       img:'pet_duck.png',         faces:false},
+  {id:'panda',        title:'🐼 Панда',        img:'pet_panda.png',        faces:false},
+  {id:'snow_leopard', title:'🐆 Снежный барс', img:'pet_snow_leopard.png', faces:false}
+];
+var CASES_META = [
+  {id:'simple', title:'📦 Обычный сундук', price:50, desc:'монеты, еда и первые питомцы',
+   drops:['🪙 10–45 монет','🍎 2 яблока','🐟 Рыбка','🍰 Торт','💊 Лекарство','🎀 Бантик',
+          '🐶 Щенок','🐰 Кролик','🐹 Хомяк','🦊 Лисёнок','🦆 Утёнок','🐼 Панда']},
+  {id:'golden', title:'🧰 Золотой сундук', price:150, desc:'крупные призы, наряды и редкие питомцы',
+   drops:['🪙 60–200 монет','🍰 2 торта','💊 2 лекарства','🧣 Шарф','🎩 Шляпа','👑 Корона',
+          '🐹 Хомяк','🦊 Лисёнок','🦆 Утёнок','🐼 Панда']}
+];
+var CHEST_ACC = { crown:'👑 Корона' };  // наряды только из сундуков
 
 function $(id) { return document.getElementById(id); }
 function authed() { return !!INIT; }
@@ -477,12 +551,14 @@ function render(p) {
   $('lvlText').textContent = xp.label + ' · ' + STAGE_NAMES[p.stage].split(' ')[0];
 
   var isEgg = p.stage === 0;
+  var sm = speciesMeta(p.species);
   $('eggBox').hidden = !isEgg;
   $('petWrap').hidden = isEgg;
-  $('petStatus').hidden = isEgg;
+  $('petBase').src = '/assets/' + sm.img;
+  $('petStatus').hidden = isEgg || !sm.faces;
   if (!isEgg) {
     $('petWrap').classList.toggle('sleeping', p.sleeping);
-    $('petFace').src = '/assets/' + faceFor(p) + '.png';
+    if (sm.faces) $('petFace').src = '/assets/' + faceFor(p) + '.png';
     renderAcc();
   }
   $('zzz').classList.toggle('show', p.sleeping);
@@ -521,7 +597,10 @@ function render(p) {
     ? (hasMed ? '💊 есть — лечи!' : 'купи 💊 в магазине')
     : 'здоров 😊';
 
+  $('chestsCoins').textContent = p.coins;
   renderShop();
+  renderPets();
+  renderChests();
   renderInv();
   renderStats();
 }
@@ -551,6 +630,90 @@ function renderShop() {
     }
     row.appendChild(btn);
     list.appendChild(row);
+  });
+  // наряды из сундуков, которых нет в магазине (например, корона)
+  if (pet) {
+    pet.acc.forEach(function(id) {
+      if (!CHEST_ACC[id] || SHOP.some(function(x) { return x.id === id; })) return;
+      var row = document.createElement('div');
+      row.className = 'shoprow';
+      var worn = pet.worn === id;
+      row.innerHTML =
+        '<div class="sico">👑</div>' +
+        '<div class="info"><div class="t">' + CHEST_ACC[id] + '</div>' +
+        '<div class="d">наряд из сундука · куплено</div></div>';
+      var btn = document.createElement('button');
+      btn.className = 'buy wear';
+      btn.textContent = worn ? 'Снять' : 'Надеть';
+      btn.onclick = function() { doAction('wear', id); };
+      row.appendChild(btn);
+      list.appendChild(row);
+    });
+  }
+}
+
+function speciesMeta(id) {
+  for (var i = 0; i < SPECIES_META.length; i++)
+    if (SPECIES_META[i].id === id) return SPECIES_META[i];
+  return SPECIES_META[0];
+}
+
+function renderPets() {
+  var grid = $('petGrid');
+  grid.innerHTML = '';
+  var owned = pet ? (pet.pets || []) : [];
+  SPECIES_META.forEach(function(sp) {
+    var has = owned.indexOf(sp.id) >= 0;
+    var card = document.createElement('div');
+    card.className = 'petcard' + (has ? '' : ' locked');
+    var img = document.createElement('img');
+    img.src = '/assets/' + sp.img; img.alt = '';
+    card.appendChild(img);
+    var nm = document.createElement('div');
+    nm.textContent = sp.title;
+    card.appendChild(nm);
+    if (has) {
+      var active = pet.species === sp.id;
+      var btn = document.createElement('button');
+      btn.className = 'sel' + (active ? ' active' : '');
+      btn.textContent = active ? 'Активен' : 'Выбрать';
+      btn.disabled = active;
+      btn.onclick = function() { doAction('setpet', sp.id); };
+      card.appendChild(btn);
+    } else {
+      var lock = document.createElement('div');
+      lock.className = 'lock';
+      lock.textContent = '🔒 из сундука';
+      card.appendChild(lock);
+    }
+    grid.appendChild(card);
+  });
+}
+
+function renderChests() {
+  var wrap = $('chestsList');
+  wrap.innerHTML = '';
+  CASES_META.forEach(function(c) {
+    var box = document.createElement('div');
+    box.className = 'card';
+    box.style.padding = '12px';
+    var head = document.createElement('div');
+    head.className = 'chestrow';
+    head.innerHTML =
+      '<div class="info"><div class="ct">' + c.title + '</div>' +
+      '<div class="cd">' + c.desc + '</div></div>';
+    var btn = document.createElement('button');
+    btn.className = 'buy';
+    btn.textContent = c.price + '🪙';
+    btn.disabled = !pet || pet.coins < c.price;
+    btn.onclick = function() { doAction('open_case', c.id); };
+    head.appendChild(btn);
+    box.appendChild(head);
+    var drops = document.createElement('div');
+    drops.className = 'drops';
+    drops.textContent = 'Возможно: ' + (c.drops || []).join(' · ');
+    box.appendChild(drops);
+    wrap.appendChild(box);
   });
 }
 
@@ -583,6 +746,7 @@ function renderStats() {
   $('stMiss').textContent = pet.care_miss;
   $('stStreak').textContent = pet.streak + ' 🔥';
   var wornItem = pet.worn ? SHOP.filter(function(x) { return x.id === pet.worn; })[0] : null;
+  if (!wornItem && pet.worn && CHEST_ACC[pet.worn]) wornItem = { title: CHEST_ACC[pet.worn] };
   $('stWorn').textContent = wornItem ? wornItem.title : 'без наряда';
 }
 
@@ -659,7 +823,7 @@ function showTab(name, el) {
   if (el) el.classList.add('active');
   document.querySelectorAll('.view').forEach(function(v) { v.classList.remove('active'); });
   $('view-' + name).classList.add('active');
-  if (name === 'top') loadTop();
+  if (name === 'friends') loadTop();
 }
 
 function initFriends() {
@@ -686,6 +850,18 @@ function initFriends() {
       document.body.removeChild(ta);
     }
   };
+  $('promoBtn').onclick = submitPromo;
+  $('promoInput').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') submitPromo();
+  });
+}
+
+function submitPromo() {
+  var input = $('promoInput');
+  var code = (input.value || '').trim();
+  if (!code) { toast('Введи промокод 🎟'); return; }
+  doAction('promo', code);
+  input.value = '';
 }
 
 function boot() {
@@ -704,6 +880,10 @@ function boot() {
   }).then(function(data) {
     if (!data) return;
     BOT = data.bot || 'sertamagotchi_bot';
+    if (data.meta) {
+      if (data.meta.species && data.meta.species.length) SPECIES_META = data.meta.species;
+      if (data.meta.cases && data.meta.cases.length) CASES_META = data.meta.cases;
+    }
     render(data.pet);
     initFriends();
     setInterval(function() {

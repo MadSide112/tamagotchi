@@ -52,10 +52,13 @@ from game.balance import (
     STAGE_TEEN,
     TEEN_AFTER_DAYS,
 )
+from game.cases import CASES, CHEST_ACC_TITLES, apply_drop, roll
+from game.pets import SPECIES, is_species
+from game.promo import redeem as redeem_promo
 from game.state import PetState
 
 ACTIONS = frozenset({'sync', 'feed', 'play', 'sleep', 'pet', 'clean', 'heal',
-                     'buy', 'wear'})
+                     'buy', 'wear', 'open_case', 'setpet', 'promo'})
 
 
 def _clamp(v: float) -> float:
@@ -228,6 +231,15 @@ def apply(st: PetState, action: str, arg: str, now: int) -> Tuple[PetState, str,
     if action == 'wear':
         return _apply_wear(st, arg)
 
+    if action == 'open_case':
+        return _apply_open_case(st, arg)
+
+    if action == 'setpet':
+        return _apply_setpet(st, arg)
+
+    if action == 'promo':
+        return redeem_promo(st, arg)
+
     return st, 'Не понимаю 🤔', False
 
 
@@ -259,7 +271,35 @@ def _apply_wear(st: PetState, item_id: str) -> Tuple[PetState, str, bool]:
         return st, 'Сначала купи: /buy %s' % item_id, False
     st.worn = '' if st.worn == item_id else item_id
     verb = 'Снял' if not st.worn else 'Надел'
-    return st, '%s %s' % (verb, SHOP[item_id]['title']), True
+    title = (SHOP.get(item_id, {}).get('title')
+             or CHEST_ACC_TITLES.get(item_id, item_id))
+    return st, '%s %s' % (verb, title), True
+
+
+def _apply_open_case(st: PetState, case_id: str) -> Tuple[PetState, str, bool]:
+    case_id = (case_id or '').strip().lower()
+    case = CASES.get(case_id)
+    if case is None:
+        return st, 'Нет такого сундука 🤔', False
+    if st.coins < case['price']:
+        return st, ('Не хватает монет: %s стоит %d🪙, у тебя %d🪙. '
+                    'Спи побольше — во сне питомец зарабатывает!'
+                    % (case['title'], case['price'], int(round(st.coins)))), False
+    st.coins -= case['price']
+    line = apply_drop(st, roll(case))
+    return st, 'Открыл %s: %s' % (case['title'], line), True
+
+
+def _apply_setpet(st: PetState, species_id: str) -> Tuple[PetState, str, bool]:
+    species_id = (species_id or '').strip().lower()
+    if not is_species(species_id):
+        return st, 'Нет такого питомца 🤔', False
+    if species_id == st.species:
+        return st, '%s уже активен' % SPECIES[species_id]['title'], False
+    if species_id not in st.pets:
+        return st, 'Этот питомец ещё не разблокирован 🔒', False
+    st.species = species_id
+    return st, '%s теперь твой активный питомец!' % SPECIES[species_id]['title'], True
 
 
 def _apply_feed(st: PetState, arg: str, now: int) -> Tuple[PetState, str, bool]:

@@ -28,6 +28,8 @@ from aiohttp import web
 
 from bot.security import validate_init_data
 from game import engine
+from game.cases import ui_meta as cases_ui_meta
+from game.pets import SPECIES
 
 log = logging.getLogger('tg.server')
 
@@ -105,7 +107,14 @@ def build_web_app(app, bot_token: str, webapp_html: str,
         if state is None:
             return web.json_response({'error': 'no pet',
                                       'hint': 'Отправь боту /start'}, status=404)
-        return web.json_response({'pet': state, 'bot': app.bot_username})
+        # meta: справочники для UI (виды питомцев + дропы сундуков).
+        # Промокоды здесь НЕ публикуются — активация только на сервере.
+        species_meta = [{'id': sid, 'title': sp['title'],
+                         'img': sp['img'], 'faces': sp['faces']}
+                        for sid, sp in SPECIES.items()]
+        return web.json_response({'pet': state, 'bot': app.bot_username,
+                                  'meta': {'species': species_meta,
+                                           'cases': cases_ui_meta()}})
 
     @routes.get('/api/top')
     async def api_top(request: web.Request) -> web.Response:

@@ -3,6 +3,8 @@ import json
 from dataclasses import dataclass, field
 from typing import Dict, List
 
+from game.pets import DEFAULT_SPECIES, is_species
+
 
 @dataclass
 class PetState:
@@ -30,6 +32,8 @@ class PetState:
     streak: int = 0         # consecutive daily-visit days
     streak_day: str = ''    # UTC YYYY-MM-DD of the last counted day
     ref_by: int = 0         # user id of the referrer, 0 = none
+    species: str = DEFAULT_SPECIES  # active look id (game.pets.SPECIES)
+    pets: List[str] = field(default_factory=lambda: [DEFAULT_SPECIES])  # owned looks
 
     @staticmethod
     def create(name: str, now: int, start_coins: float = 0.0,
@@ -65,6 +69,8 @@ class PetState:
             'kr': self.streak,
             'kd': self.streak_day,
             'rb': self.ref_by,
+            'sp': self.species,
+            'pt': self.pets,
         }
 
     def public_dict(self) -> dict:
@@ -102,6 +108,8 @@ class PetState:
             'inv': dict(self.inv),
             'acc': list(self.acc),
             'worn': self.worn,
+            'species': self.species,
+            'pets': list(self.pets),
             'cooldowns': dict(self.cooldowns),
         }
 
@@ -141,6 +149,17 @@ class PetState:
                 clean_cd[str(k)[:16]] = int(ts)
             except (TypeError, ValueError):
                 continue
+        pets_raw = d.get('pt') if isinstance(d.get('pt'), list) else []
+        clean_pets: List[str] = []
+        for sp in pets_raw:
+            sp = str(sp)[:16]
+            if is_species(sp) and sp not in clean_pets:
+                clean_pets.append(sp)
+        if DEFAULT_SPECIES not in clean_pets:
+            clean_pets.insert(0, DEFAULT_SPECIES)
+        species = str(d.get('sp', ''))[:16]
+        if not (is_species(species) and species in clean_pets):
+            species = DEFAULT_SPECIES
         return PetState(
             rev=max(1, int_or('r', 1)),
             name=str(d.get('n', 'Пуся'))[:32],
@@ -166,6 +185,8 @@ class PetState:
             streak=max(0, int_or('kr', 0)),
             streak_day=str(d.get('kd', ''))[:10],
             ref_by=int_or('rb', 0),
+            species=species,
+            pets=clean_pets,
         )
 
     @staticmethod
