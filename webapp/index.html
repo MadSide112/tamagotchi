@@ -4,6 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="preload" as="image" href="/assets/room.png">
+<link rel="preload" as="image" href="/assets/pet.png">
+<link rel="preload" as="image" href="/assets/avatar.png">
+<link rel="preload" as="image" href="/assets/face_1.png">
 <title>🐣 Питомец</title>
 <style>
   :root {
@@ -58,15 +62,13 @@
     box-shadow: var(--shadow); font-size: 13px; font-weight: 700;
   }
   .pill img { width: 16px; height: 16px; }
-  .hearts { display: flex; gap: 1px; }
-  .hearts img { width: 14px; height: 14px; }
 
   main { flex: 1; padding: 0 12px 84px; }
 
   /* --- room --- */
   .room {
     position: relative; border-radius: var(--r); overflow: hidden;
-    box-shadow: var(--shadow); background: #fff;
+    box-shadow: var(--shadow); background: var(--cream);
   }
   .room > .roomimg { width: 100%; display: block; }
   .petwrap {
@@ -257,7 +259,7 @@
     </div>
     <div class="pills">
       <div class="pill"><img src="/assets/coin.png" alt=""><span id="coinVal">0</span></div>
-      <div class="pill hearts" id="heartsBox"></div>
+      <div class="pill" id="moodPill" title="Настроение"><img src="/assets/heart_full.png" alt=""><span id="moodVal">—</span></div>
     </div>
   </header>
 
@@ -453,16 +455,8 @@ function renderAcc() {
   layer.appendChild(img);
 }
 
-function renderHearts(mood) {
-  var box = $('heartsBox');
-  box.innerHTML = '';
-  var full = Math.ceil(mood / 20);
-  for (var i = 0; i < 5; i++) {
-    var img = document.createElement('img');
-    img.src = '/assets/' + (i < full ? 'heart_full.png' : 'heart_empty.png');
-    img.alt = '';
-    box.appendChild(img);
-  }
+function renderMood(mood) {
+  $('moodVal').textContent = mood + '%';
 }
 
 function xpInfo(p) {
@@ -479,7 +473,7 @@ function render(p) {
   $('petName').textContent = p.name;
   $('coinVal').textContent = p.coins;
   $('shopCoins').textContent = p.coins;
-  renderHearts(p.mood);
+  renderMood(p.mood);
 
   var xp = xpInfo(p);
   $('xpFill').style.width = xp.pct + '%';

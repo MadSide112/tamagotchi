@@ -106,7 +106,9 @@ def crop_all(sheet: bool) -> None:
         bbox = (max(0, bbox[0] - pad), max(0, bbox[1] - pad),
                 min(cell.width, bbox[2] + pad), min(cell.height, bbox[3] + pad))
         sprite = cell.crop(bbox)
-        sprite.save(OUT / ('%s.png' % name))
+        # палитровое PNG (PNG8): пиксель-арт весит в разы меньше
+        sprite.quantize(colors=128, method=Image.FASTOCTREE,
+                        dither=Image.Dither.NONE).save(OUT / ('%s.png' % name))
         crops[name] = sprite
         print('%-12s %dx%d' % (name, sprite.width, sprite.height))
     if sheet:

@@ -141,6 +141,16 @@ def build_web_app(app, bot_token: str, webapp_html: str,
     application.add_routes(routes)
     if assets_dir is not None:
         application.router.add_static('/assets/', str(assets_dir))
+
+    @web.middleware
+    async def assets_cache(request: web.Request, handler):
+        response = await handler(request)
+        if request.path.startswith('/assets/'):
+            # ассеты неизменяемы: имена файлов фиксированы
+            response.headers['Cache-Control'] = 'public, max-age=604800, immutable'
+        return response
+
+    application.middlewares.append(assets_cache)
     return application
 
 
