@@ -94,6 +94,9 @@ class Db:
                 st = json.loads(state_json)
             except (ValueError, TypeError):
                 continue
+            # stage 0 — яйцо: в топе попечителей ему не место
+            if st.get('s', 0) == 0:
+                continue
             pets.append(({
                 'name': st.get('n', '???'),
                 'stage': st.get('s', 0),
