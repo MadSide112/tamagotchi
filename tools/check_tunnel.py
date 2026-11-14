@@ -130,7 +130,16 @@ def main() -> None:
             'type': 'web_app', 'text': '🐣 Питомец', 'web_app': {'url': full}}})
         check('Telegram menu button', True, '%s -> %s (исправлено)' % (current, full))
 
-    status, body = http_status(full)
+    # Страница /app — 40 КБ через туннель: локалтуннель флапает на крупных
+    # телах, поэтому (в отличие от лёгкого /api/health) даём до 4 попыток.
+    attempts = 1 if fast else 4
+    status, body = 0, ''
+    for i in range(attempts):
+        status, body = http_status(full)
+        if status == 200 and 'petWrap' in body:
+            break
+        if i + 1 < attempts:
+            time.sleep(3)
     check('Mini App page %s' % full,
           status == 200 and 'petWrap' in body,
           'HTTP %s' % (status or 'no answer'))
