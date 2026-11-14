@@ -29,6 +29,7 @@ PET_COOLDOWN_SECONDS = 60
 CLEAN_COOLDOWN_SECONDS = 300
 CLEAN_COINS = 2
 SCAVENGE_SATIETY = 10.0           # /feed with empty inventory and no coins
+SCAVENGE_COOLDOWN_SECONDS = 180   # foraging is limited to once per 3 minutes
 
 # --- economy ---
 START_COINS = 30

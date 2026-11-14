@@ -32,16 +32,32 @@ log = logging.getLogger('tg.app')
 
 WIDGET_CAPTION = 'Твой питомец живёт здесь 🐣 Кормите, играйте и не забывайте про сон.'
 HELP_TEXT = (
-    'Я тамагочи-бот, питомец живёт прямо в чате 🐣\n\n'
-    '/start [ref_ID] — завести питомца\n'
-    '/feed [apple|fish|cake] — покормить\n'
+    'Я тамагочи-бот: питомец живёт в чате и в Mini App 🐣\n\n'
+    'УХОД\n'
+    '/feed [apple|fish|cake] — покормить лучшей едой из инвентаря; '
+    'если еды нет — питомец ищет сам (+10 сытости, раз в 3 мин)\n'
     '/clean — помыть (+2🪙)\n'
-    '/heal — вылечить (нужно 💊)\n'
-    '/play, /sleep, /pet — игры, сон, ласка\n'
-    '/shop — магазин · /buy <id> — купить\n'
-    '/wear <id>|off — надеть аксессуар\n'
-    '/name <имя> — переименовать\n'
-    '/stats — статы · /top — лидерборд'
+    '/play — игры: +настроение, −энергия\n'
+    '/sleep — сон: энергия +10/ч и доход 3🪙/ч\n'
+    '/pet — погладить (кулдаун 1 мин)\n'
+    '/heal — вылечить (нужен 💊)\n\n'
+    'БОЛЕЗНЬ 🤒\n'
+    'Шанс заболеть растёт, если чистота ниже 25 или сытость ниже 25 — '
+    'следи за ними. Лечится 💊 из /shop (/heal) или само проходит за 24 ч, '
+    'но это промах ухода. Смерти нет.\n\n'
+    'ЭВОЛЮЦИЯ\n'
+    'Яйцо → Малыш (первое кормление) → Подросток (3 дня) → Взрослый (7 дней). '
+    'Каким он станет — решает уход: без промахов — Мудрец 🎓, '
+    'при хорошем уходе — Красавец ✨, запущенный — Хулиган 😈. Промахи — '
+    'это нули в статах и запущенная болезнь, они не откатываются.\n\n'
+    'МОНЕТЫ 🪙\n'
+    'Копятся во сне (+3/ч), за мытьё (+2), за ежедневный стрик '
+    '(+10 и +5 за каждый день подряд, кап +60) и за друзей (/ref).\n\n'
+    'МАГАЗИН И ПРОЧЕЕ\n'
+    '/shop — список товаров · /buy <id> — купить\n'
+    '/wear <id>|off — надеть/снять аксессуар\n'
+    '/stats — все статы · /top — лидерборд\n'
+    '/ref [код] — свой код приглашения или ввод чужого'
 )
 GROUP_HINT = 'Я тамагочи-бот 🐣 Питомец заводится в личке — напиши мне /start.'
 
@@ -134,6 +150,8 @@ class App:
                 await self._wear(user_id, chat_id, args.strip().lower())
             elif cmd == 'top':
                 await self._top(chat_id)
+            elif cmd == 'ref':
+                await self._ref(user_id, chat_id, args.strip())
             elif cmd == 'name':
                 await self._rename(user_id, chat_id, args)
             elif cmd == 'stats':
@@ -271,21 +289,70 @@ class App:
                 await self._grant_ref(user_id, st.ref_by)
 
     async def _grant_ref(self, invitee_id: int, referrer_id: int) -> None:
+        """Reward the referrer. Lock-free on purpose: acquiring the referrer's
+        lock here could deadlock opposite-direction referrals; the lost-update
+        window is a single coins increment and is acceptable."""
         row = await self.db.get_pet(referrer_id)
         if row is None:
             return
-        async with self._lock(referrer_id):
-            now = int(time.time())
+        now = int(time.time())
+        st = PetState.from_json(row['state'])
+        st.coins += REF_BONUS
+        st.rev += 1
+        await self.db.save_pet(referrer_id, row['chat_id'], row['message_id'],
+                               st.to_json(), row['warn_ts'], row['sick_warn'], now)
+        try:
+            await self.api.send_message(
+                row['chat_id'], '🎁 По твоему приглашению завёлся питомец: +%d🪙!' % REF_BONUS)
+        except ApiError as err:
+            log.warning('ref notify failed: %s', err.description)
+
+    async def _ref(self, user_id: int, chat_id: int, args: str) -> None:
+        if not args:
+            await self.api.send_message(
+                chat_id,
+                '🎁 Твой код: ref_%d\nПриглашение: t.me/%s?start=ref_%d\n'
+                'Новый игрок получает +%d🪙 и ты получаешь +%d🪙. '
+                'Чужой код можно ввести здесь: /ref ref_<id>' % (
+                    user_id, self.bot_username, user_id, REF_BONUS, REF_BONUS))
+            return
+        code = args.lower().removeprefix('ref_')
+        try:
+            ref_id = int(code)
+        except ValueError:
+            await self.api.send_message(chat_id, 'Код выглядит так: ref_123456789')
+            return
+        if ref_id == user_id:
+            await self.api.send_message(chat_id, 'Это твой же код 🙂')
+            return
+        async with self._lock(user_id):
+            row = await self.db.get_pet(user_id)
+            if row is None:
+                await self.api.send_message(chat_id, 'Сначала заведи питомца: /start 🐣')
+                return
             st = PetState.from_json(row['state'])
+            if st.ref_by:
+                await self.api.send_message(chat_id,
+                                            'Питомец уже привязан к коду ref_%d' % st.ref_by)
+                return
+            if not await self.db.get_pet(ref_id):
+                await self.api.send_message(chat_id,
+                                            'У этого кода нет питомца — код недействителен')
+                return
+            now = int(time.time())
+            st.ref_by = ref_id
             st.coins += REF_BONUS
             st.rev += 1
-            await self.db.save_pet(referrer_id, row['chat_id'], row['message_id'],
-                                   st.to_json(), row['warn_ts'], row['sick_warn'], now)
-            try:
-                await self.api.send_message(
-                    row['chat_id'], '🎁 По твоему приглашению завёлся питомец: +%d🪙!' % REF_BONUS)
-            except ApiError as err:
-                log.warning('ref notify failed: %s', err.description)
+            state_json = st.to_json()
+            if row['message_id']:
+                try:
+                    await self.api.edit_widget_data(chat_id, row['message_id'], state_json)
+                except ApiError as err:
+                    log.warning('editMessageWidgetData failed: %s', err.description)
+            await self.db.save_pet(user_id, chat_id, row['message_id'], state_json,
+                                   row['warn_ts'], row['sick_warn'], now)
+            await self.api.send_message(chat_id, '🎁 Код принят: +%d🪙!' % REF_BONUS)
+            await self._grant_ref(user_id, ref_id)
 
     @staticmethod
     def _parse_ref(args: str) -> int:

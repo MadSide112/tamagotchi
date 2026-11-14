@@ -34,6 +34,7 @@ from game.balance import (
     PLAY_ENERGY_COST,
     PLAY_MIN_ENERGY,
     PLAY_MOOD_GAIN,
+    SCAVENGE_COOLDOWN_SECONDS,
     SCAVENGE_SATIETY,
     SHOP,
     SICK_AUTO_HEAL_HOURS,
@@ -248,6 +249,11 @@ def _apply_feed(st: PetState, arg: str, now: int) -> Tuple[PetState, str, bool]:
         title = SHOP[item]['title']
     else:
         # nothing in inventory: the pet forages, weaker effect, no lock-out
+        last = st.cooldowns.get('scavenge', 0)
+        if now - last < SCAVENGE_COOLDOWN_SECONDS:
+            minutes = max(1, (SCAVENGE_COOLDOWN_SECONDS - (now - last) + 59) // 60)
+            return st, 'Питомец недавно искал еду — попробуй через ~%d мин 🌿' % minutes, False
+        st.cooldowns['scavenge'] = now
         effects = {'satiety': SCAVENGE_SATIETY}
         title = 'яблочко, найденное в кустах 🌿'
 

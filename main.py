@@ -17,10 +17,12 @@ from storage.db import Db
 
 BOT_COMMANDS = [
     {'command': 'start', 'description': 'Завести питомца'},
-    {'command': 'name', 'description': 'Переименовать питомца'},
+    {'command': 'feed', 'description': 'Покормить'},
     {'command': 'stats', 'description': 'Показать статы'},
+    {'command': 'shop', 'description': 'Магазин'},
     {'command': 'top', 'description': 'Лидерборд'},
-    {'command': 'help', 'description': 'Что умеет бот'},
+    {'command': 'ref', 'description': 'Реферальный код'},
+    {'command': 'help', 'description': 'Как ухаживать за питомцем'},
 ]
 
 WEB_PORT = 8321

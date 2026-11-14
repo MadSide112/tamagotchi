@@ -196,6 +196,20 @@ class TestApply(unittest.TestCase):
         self.assertTrue(changed)
         self.assertAlmostEqual(st.satiety, 60.0)  # scavenge +10
 
+    def test_scavenge_cooldown(self):
+        st = baby()
+        st.inv = {}
+        st.satiety = 50.0
+        st, msg, changed = engine.apply(st, 'feed', '', T0)
+        self.assertTrue(changed)
+        st2, msg2, changed2 = engine.apply(st, 'feed', '', T0 + 60)
+        self.assertFalse(changed2)
+        self.assertIn('искал еду', msg2)
+        self.assertEqual(st2.cooldowns.get('scavenge'), T0)
+        st3, msg3, changed3 = engine.apply(st2, 'feed', '', T0 + 181)
+        self.assertTrue(changed3)
+        self.assertGreater(st3.satiety, 65.0)  # ~59.7 after decay + scavenge 10
+
     def test_clean_cooldown_and_coins(self):
         st = baby()
         st.hygiene = 10.0
