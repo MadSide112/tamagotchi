@@ -71,19 +71,26 @@
     box-shadow: var(--shadow); background: var(--cream);
   }
   .room > .roomimg { width: 100%; display: block; }
+  /* кот сидит на ковре по центру комнаты, неподвижно */
   .petwrap {
-    position: absolute; left: 50%; bottom: 12%; transform: translateX(-58%);
-    width: 42%;
+    position: absolute; left: 63%; bottom: 4%; transform: translateX(-50%);
+    width: 40%;
   }
   .petwrap.sleeping { filter: brightness(.85) saturate(.8); }
-  .petbase { width: 100%; display: block; animation: bob 3.2s ease-in-out infinite; }
-  @keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
-  .faceimg { position: absolute; width: 30%; left: 34%; top: 7%; }
+  .petbase { width: 100%; display: block; }
+  /* рамка со «эмоцией» — правый верхний угол комнаты */
+  .petstatus {
+    position: absolute; top: 10px; right: 10px; z-index: 3;
+    background: rgba(255,255,255,.93);
+    border: 3px solid #6C5CE7; border-radius: 14px;
+    padding: 5px; box-shadow: var(--shadow);
+  }
+  .petstatus img { display: block; width: 44px; height: 44px; image-rendering: pixelated; }
   .accimg { position: absolute; }
-  .acc-hat   { width: 34%; left: 30%; top: -7%; }
-  .acc-crown { width: 30%; left: 32%; top: -5%; }
-  .acc-bow   { width: 22%; left: 14%; top: 12%; }
-  .acc-scarf { width: 32%; left: 30%; top: 52%; }
+  .acc-hat   { width: 30%; left: 35%; top: -11%; }
+  .acc-crown { width: 24%; left: 38%; top: -4%; }
+  .acc-bow   { width: 20%; left: 14%; top: 4%; }
+  .acc-scarf { width: 27%; left: 36%; top: 49%; }
   .egg {
     position: absolute; left: 50%; bottom: 16%; transform: translateX(-50%);
     font-size: 64px; animation: wobble 2.4s ease-in-out infinite;
@@ -271,9 +278,9 @@
         <div class="egg" id="eggBox" hidden>🥚</div>
         <div class="petwrap" id="petWrap" hidden>
           <img class="petbase" src="/assets/pet.png" alt="">
-          <img class="faceimg" src="/assets/face_1.png" alt="" id="petFace">
           <div id="accLayer"></div>
         </div>
+        <div class="petstatus" id="petStatus" hidden><img src="/assets/face_1.png" alt="" id="petFace"></div>
         <div class="zzz" id="zzz">z z z</div>
         <div class="bubble" id="bubble"></div>
       </div>
@@ -390,7 +397,6 @@ var SHOP = [
   {id:'med',     title:'💊 Лекарство', price:20, kind:'med',       desc:'лечит болезнь',               ico:'potion.png'},
   {id:'bow',     title:'🎀 Бантик',    price:30, kind:'accessory', desc:'наряд',                       ico:'bow.png'},
   {id:'scarf',   title:'🧣 Шарф',      price:35, kind:'accessory', desc:'наряд',                       ico:'scarf.png'},
-  {id:'glasses', title:'🕶 Очки',      price:40, kind:'accessory', desc:'наряд',                       ico:''},
   {id:'hat',     title:'🎩 Шляпа',     price:50, kind:'accessory', desc:'наряд',                       ico:'hat.png'}
 ];
 
@@ -437,15 +443,6 @@ function renderAcc() {
   layer.innerHTML = '';
   if (!pet || !pet.worn) return;
   var w = pet.worn;
-  if (w === 'glasses') {
-    var g = document.createElement('span');
-    g.className = 'accimg acc-glasses';
-    g.style.fontSize = '26px';
-    g.style.lineHeight = '1';
-    g.textContent = '👓';
-    layer.appendChild(g);
-    return;
-  }
   var file = ACC_ASSETS[w];
   if (!file) return;
   var img = document.createElement('img');
@@ -482,6 +479,7 @@ function render(p) {
   var isEgg = p.stage === 0;
   $('eggBox').hidden = !isEgg;
   $('petWrap').hidden = isEgg;
+  $('petStatus').hidden = isEgg;
   if (!isEgg) {
     $('petWrap').classList.toggle('sleeping', p.sleeping);
     $('petFace').src = '/assets/' + faceFor(p) + '.png';

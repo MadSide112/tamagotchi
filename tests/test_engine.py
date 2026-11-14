@@ -362,8 +362,8 @@ class TestJson(unittest.TestCase):
     def test_json_fits_budgets(self):
         st = baby()
         st.inv = {k: 99 for k in ('apple', 'fish', 'cake', 'med')}
-        st.acc = ['hat', 'bow', 'scarf', 'glasses']
-        st.worn = 'glasses'
+        st.acc = ['hat', 'bow', 'scarf']
+        st.worn = 'hat'
         self.assertLess(len(st.to_json().encode('utf-8')), 1024)  # chat_data limit
         import json
         pub_json = json.dumps(st.public_dict(), ensure_ascii=False)

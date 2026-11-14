@@ -47,7 +47,6 @@ SHOP = {
     'med':     {'price': 20, 'title': '💊 Лекарство', 'kind': 'med'},
     'bow':     {'price': 30, 'title': '🎀 Бантик',    'kind': 'accessory'},
     'scarf':   {'price': 35, 'title': '🧣 Шарф',      'kind': 'accessory'},
-    'glasses': {'price': 40, 'title': '🕶 Очки',      'kind': 'accessory'},
     'hat':     {'price': 50, 'title': '🎩 Шляпа',     'kind': 'accessory'},
 }
 FOOD_EFFECTS = {
