@@ -1,6 +1,6 @@
 """HTTP server for the Telegram Mini App (WebApp).
 
-GET  /app       — the Mini App page (HTML)
+GET  /app       — the Mini App page (HTML, gzip, ETag/304 revalidation)
 GET  /assets/   — static sprites for the Mini App UI
 GET  /app_test  — dev-only harness (env TAMAGOTCHI_DEV_TEST=1): the same page
                   with a stubbed Telegram.WebApp and server-signed initData,
@@ -14,6 +14,7 @@ Every /api request is authenticated by validating Telegram initData
 (HMAC-SHA256 with the bot token) — the same server-authoritative pipeline
 as chat commands.
 """
+import gzip
 import hashlib
 import hmac
 import json
@@ -65,13 +66,49 @@ _DEV_STUB_JS = (
 )
 
 
+def _wants_gzip(accept: str) -> bool:
+    """True if Accept-Encoding lists gzip with a non-zero q-value."""
+    try:
+        for part in accept.split(','):
+            pieces = part.strip().lower().split(';')
+            if pieces[0] != 'gzip':
+                continue
+            q = 1.0
+            for param in pieces[1:]:
+                key, _, val = param.strip().partition('=')
+                if key == 'q':
+                    q = float(val)
+            if q > 0:
+                return True
+    except ValueError:
+        return 'gzip' in accept.lower()
+    return False
+
+
 def build_web_app(app, bot_token: str, webapp_html: str,
                   assets_dir: Optional[Path] = None) -> web.Application:
     routes = web.RouteTableDef()
 
+    # Страница фиксирована на время жизни сервера: считаем ETag и gzip один раз.
+    # no-cache заставляет вебвью переспрашивать (304 без тела) — критично
+    # при медленном туннеле, где передача 40 КБ занимает до десятков секунд.
+    page_raw = webapp_html.encode('utf-8')
+    page_etag = '"%s"' % hashlib.sha1(page_raw).hexdigest()
+    page_gzip = gzip.compress(page_raw, compresslevel=9)
+    page_headers = {'Cache-Control': 'no-cache', 'Vary': 'Accept-Encoding'}
+
     @routes.get('/app')
     async def serve_app(request: web.Request) -> web.Response:
-        return web.Response(text=webapp_html, content_type='text/html', charset='utf-8')
+        if request.headers.get('If-None-Match') == page_etag:
+            return web.Response(status=304, headers={**page_headers,
+                                                     'ETag': page_etag})
+        headers = {**page_headers, 'ETag': page_etag}
+        if _wants_gzip(request.headers.get('Accept-Encoding', '')):
+            headers['Content-Encoding'] = 'gzip'
+            return web.Response(body=page_gzip, headers=headers,
+                                content_type='text/html', charset='utf-8')
+        return web.Response(body=page_raw, headers=headers,
+                            content_type='text/html', charset='utf-8')
 
     @routes.get('/app_test')
     async def serve_app_test(request: web.Request) -> web.Response:
