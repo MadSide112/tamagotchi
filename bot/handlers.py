@@ -226,6 +226,9 @@ class App:
                     'Но играть можно прямо в чате: /feed /play /sleep /pet /clean '
                     '/shop /buy /wear /top!\nВиджет заработает, когда Telegram снова '
                     'откроет доступ — просто отправь /start.')
+                # persist the pet even without a widget: text-mode care commands
+                # (feed/clean/heal/...) must work regardless of widget availability
+                await self.db.save_pet(user_id, chat_id, None, st.to_json(), 0, 0, now)
                 if st.ref_by and fresh:
                     await self._grant_ref(user_id, st.ref_by)
                 return
