@@ -19,8 +19,8 @@ import time
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 URL_FILE = ROOT / 'data' / 'tunnel_url'
 WEB_PORT = 8321
-PROBE_INTERVAL = 20      # seconds between public-URL probes
-PROBE_FAILS_ALLOWED = 2  # consecutive failures before killing the session
+PROBE_INTERVAL = 10      # seconds between public-URL probes
+PROBE_FAILS_ALLOWED = 1  # consecutive failures before killing the session
 URL_TIMEOUT = 45         # seconds to wait for localhost.run to issue a URL
 
 SSH_ARGS = [
