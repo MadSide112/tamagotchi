@@ -54,7 +54,8 @@ from game.balance import (
 )
 from game.state import PetState
 
-ACTIONS = frozenset({'sync', 'feed', 'play', 'sleep', 'pet', 'clean', 'heal'})
+ACTIONS = frozenset({'sync', 'feed', 'play', 'sleep', 'pet', 'clean', 'heal',
+                     'buy', 'wear'})
 
 
 def _clamp(v: float) -> float:
@@ -221,7 +222,44 @@ def apply(st: PetState, action: str, arg: str, now: int) -> Tuple[PetState, str,
         st.care_score += 2
         return st, '💊 Лекарство помогло, %s здоров!' % st.name, True
 
+    if action == 'buy':
+        return _apply_buy(st, arg)
+
+    if action == 'wear':
+        return _apply_wear(st, arg)
+
     return st, 'Не понимаю 🤔', False
+
+
+def _apply_buy(st: PetState, item_id: str) -> Tuple[PetState, str, bool]:
+    item_id = (item_id or '').strip().lower()
+    item = SHOP.get(item_id)
+    if item is None:
+        return st, 'Нет такого товара. Смотри /shop', False
+    if item['kind'] == 'accessory' and item_id in st.acc:
+        return st, '%s уже куплен — надеть: /wear %s' % (item['title'], item_id), False
+    if st.coins < item['price']:
+        return st, ('Не хватает монет: нужно %d🪙, у тебя %d🪙. '
+                    'Спи побольше — во сне питомец зарабатывает!'
+                    % (item['price'], int(round(st.coins)))), False
+    st.coins -= item['price']
+    if item['kind'] == 'accessory':
+        st.acc.append(item_id)
+        return st, '%s куплен! Надеть: /wear %s' % (item['title'], item_id), True
+    st.inv[item_id] = st.inv.get(item_id, 0) + 1
+    return st, '%s в инвентаре: ×%d' % (item['title'], st.inv[item_id]), True
+
+
+def _apply_wear(st: PetState, item_id: str) -> Tuple[PetState, str, bool]:
+    item_id = (item_id or '').strip().lower()
+    if item_id in ('', 'off'):
+        st.worn = ''
+        return st, 'Снял всё нарядное', True
+    if item_id not in st.acc:
+        return st, 'Сначала купи: /buy %s' % item_id, False
+    st.worn = '' if st.worn == item_id else item_id
+    verb = 'Снял' if not st.worn else 'Надел'
+    return st, '%s %s' % (verb, SHOP[item_id]['title']), True
 
 
 def _apply_feed(st: PetState, arg: str, now: int) -> Tuple[PetState, str, bool]:

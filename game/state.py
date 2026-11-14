@@ -82,6 +82,29 @@ class PetState:
             'wn': self.worn,
         }
 
+    def web_dict(self) -> dict:
+        """Full state for the authenticated Mini App API (web UI only)."""
+        return {
+            'rev': self.rev,
+            'name': self.name,
+            'satiety': round(self.satiety),
+            'mood': round(self.mood),
+            'energy': round(self.energy),
+            'hygiene': round(self.hygiene),
+            'sleeping': self.sleeping,
+            'sick': self.sick,
+            'stage': self.stage,
+            'born': self.born,
+            'coins': int(round(self.coins)),
+            'care_score': self.care_score,
+            'care_miss': self.care_miss,
+            'streak': self.streak,
+            'inv': dict(self.inv),
+            'acc': list(self.acc),
+            'worn': self.worn,
+            'cooldowns': dict(self.cooldowns),
+        }
+
     def to_json(self) -> str:
         return json.dumps(self.to_dict(), ensure_ascii=False, separators=(',', ':'))
 

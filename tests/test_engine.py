@@ -281,6 +281,65 @@ class TestApply(unittest.TestCase):
         self.assertFalse(changed)
         self.assertIn('Не понимаю', msg)
 
+    def test_buy_food_deducts_coins(self):
+        st = baby()
+        st.coins = 30.0
+        st, msg, changed = engine.apply(st, 'buy', 'fish', T0)
+        self.assertTrue(changed)
+        self.assertAlmostEqual(st.coins, 20.0)
+        self.assertEqual(st.inv.get('fish'), 1)
+
+    def test_buy_not_enough_coins(self):
+        st = baby()
+        st.coins = 4.0
+        st, msg, changed = engine.apply(st, 'buy', 'cake', T0)
+        self.assertFalse(changed)
+        self.assertIn('Не хватает монет', msg)
+        self.assertAlmostEqual(st.coins, 4.0)
+        self.assertIsNone(st.inv.get('cake'))
+
+    def test_buy_unknown_item(self):
+        st = baby()
+        st, msg, changed = engine.apply(st, 'buy', 'yacht', T0)
+        self.assertFalse(changed)
+        self.assertIn('Нет такого товара', msg)
+
+    def test_buy_accessory_once_and_case_insensitive(self):
+        st = baby()
+        st.coins = 100.0
+        st, msg, changed = engine.apply(st, 'buy', 'Hat', T0)
+        self.assertTrue(changed)
+        self.assertIn('hat', st.acc)
+        self.assertAlmostEqual(st.coins, 50.0)
+        st2, msg2, changed2 = engine.apply(st, 'buy', 'hat', T0 + 1)
+        self.assertFalse(changed2)
+        self.assertIn('уже куплен', msg2)
+        self.assertAlmostEqual(st2.coins, 50.0)  # no double charge
+
+    def test_wear_toggle_and_off(self):
+        st = baby()
+        st.acc = ['hat']
+        st, msg, changed = engine.apply(st, 'wear', 'hat', T0)
+        self.assertTrue(changed)
+        self.assertEqual(st.worn, 'hat')
+        self.assertIn('Надел', msg)
+        st, msg, changed = engine.apply(st, 'wear', 'hat', T0 + 1)
+        self.assertTrue(changed)
+        self.assertEqual(st.worn, '')
+        self.assertIn('Снял', msg)
+        st.acc = ['bow']
+        st.worn = 'hat'
+        st, msg, changed = engine.apply(st, 'wear', 'off', T0 + 2)
+        self.assertTrue(changed)
+        self.assertEqual(st.worn, '')
+
+    def test_wear_not_owned(self):
+        st = baby()
+        st, msg, changed = engine.apply(st, 'wear', 'crown', T0)
+        self.assertFalse(changed)
+        self.assertIn('Сначала купи', msg)
+        self.assertEqual(st.worn, '')
+
 
 class TestJson(unittest.TestCase):
     def test_roundtrip(self):

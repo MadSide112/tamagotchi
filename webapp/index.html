@@ -3,82 +3,727 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>🐣 Питомец</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<title>🐣 Питомец</title>
 <style>
-body{margin:0;padding:10px 12px;max-width:100%;font:14px/1.35 system-ui,-apple-system,sans-serif;user-select:none;-webkit-user-select:none}
-.hd{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
-.hd b{font-size:15px}
-#sg{font-size:12px;color:var(--tg-theme-hint-color);white-space:nowrap}
-#pc{display:flex;justify-content:center}
-svg{width:170px;height:140px}
-.g0,.g1,.g2,.g3,.fc .ec,.fc .zz,.fc .ms,.ac{visibility:hidden}
-.s0 .g0,.s1 .g1,.s2 .g2,.s3 .g3,.s4 .g3,.s5 .g3{visibility:visible}
-.s0 .fc{visibility:hidden}
-.sl .fc .eo{visibility:hidden}.sl .fc .ec,.sl .fc .zz{visibility:visible}
-.sad .fc .mh{visibility:hidden}.sad .fc .ms{visibility:visible}
-.a-hat .ac-hat,.a-glasses .ac-glasses,.a-bow .ac-bow,.a-scarf .ac-scarf{visibility:visible}
-@keyframes br{50%{transform:scale(1.05,.94)}}
-@keyframes bb{50%{transform:rotate(3deg)}}
-@keyframes bl{95%{transform:scaleY(.06)}}
-@keyframes zz{50%{transform:translate(2px,-3px)}}
-.bd{animation:br 3.2s ease-in-out infinite;transform-origin:80px 92px}
-.eg{animation:bb 2.6s ease-in-out infinite;transform-origin:80px 100px}
-.eo{animation:bl 4.4s linear infinite;transform-origin:80px 72px}
-.zz{animation:zz 2.4s ease-in-out infinite}
-.sr{margin-top:4px}
-.lb{display:flex;justify-content:space-between;font-size:12px;color:var(--tg-theme-hint-color)}
-.bt{height:5px;margin-top:2px;border-radius:3px;background:var(--tg-theme-secondary-bg-color);overflow:hidden}
-.bt i{display:block;height:100%;width:0;border-radius:3px;background:var(--tg-theme-button-color);transition:width .5s}
-.low .bt i{background:var(--tg-theme-destructive-text-color)}
-.rw{display:flex;gap:6px;margin-top:10px}
-.rw button{flex:1;min-width:0;font-size:13px;padding:8px 2px}
-#m{min-height:15px;margin-top:7px;text-align:center;font-size:12px;color:var(--tg-theme-hint-color)}
+  :root {
+    --cream: #FDF3E7; --panel: #FFFFFF; --ink: #5B4A3F; --ink-soft: #9B8A7D;
+    --pink: #FFB5C2; --mint: #B5E8D5; --sky: #B5D8F0; --lilac: #D8C2F0;
+    --lemon: #FFE3A3; --coral: #FF9AA8; --shadow: 0 6px 16px rgba(91,74,63,.14);
+    --r: 18px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    font-family: 'Chalkboard SE', 'Comic Sans MS', ui-rounded, system-ui, sans-serif;
+    background: var(--cream); color: var(--ink);
+    display: flex; justify-content: center;
+    user-select: none; -webkit-user-select: none;
+  }
+  img { image-rendering: pixelated; }
+  #app {
+    width: 100%; max-width: 430px; min-height: 100vh;
+    display: flex; flex-direction: column;
+    background: var(--cream); position: relative;
+  }
+  @media (min-width: 431px) {
+    body { background: #F3E4D3; }
+    #app { box-shadow: 0 0 40px rgba(91,74,63,.2); }
+  }
+
+  /* --- header --- */
+  header { display: flex; align-items: center; gap: 10px; padding: 12px 14px 8px; }
+  .avatar {
+    width: 46px; height: 46px; border-radius: 50%;
+    border: 3px solid var(--pink); background: #fff;
+    object-fit: contain; flex: none;
+  }
+  .who { flex: 1; min-width: 0; }
+  .who .name {
+    font-size: 16px; font-weight: 700; white-space: nowrap; overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .xpwrap { margin-top: 4px; display: flex; align-items: center; gap: 6px; }
+  .xpbar { flex: 1; height: 10px; border-radius: 6px; background: #EFE2D2; overflow: hidden; }
+  .xpfill {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, var(--lemon), var(--coral));
+    border-radius: 6px; transition: width .5s;
+  }
+  .lvl { font-size: 11px; font-weight: 700; color: var(--ink-soft); white-space: nowrap; }
+  .pills { display: flex; flex-direction: column; gap: 4px; align-items: flex-end; }
+  .pill {
+    display: flex; align-items: center; gap: 4px;
+    background: var(--panel); border-radius: 999px; padding: 3px 10px 3px 6px;
+    box-shadow: var(--shadow); font-size: 13px; font-weight: 700;
+  }
+  .pill img { width: 16px; height: 16px; }
+  .hearts { display: flex; gap: 1px; }
+  .hearts img { width: 14px; height: 14px; }
+
+  main { flex: 1; padding: 0 12px 84px; }
+
+  /* --- room --- */
+  .room {
+    position: relative; border-radius: var(--r); overflow: hidden;
+    box-shadow: var(--shadow); background: #fff;
+  }
+  .room > .roomimg { width: 100%; display: block; }
+  .petwrap {
+    position: absolute; left: 50%; bottom: 12%; transform: translateX(-58%);
+    width: 42%;
+  }
+  .petwrap.sleeping { filter: brightness(.85) saturate(.8); }
+  .petbase { width: 100%; display: block; animation: bob 3.2s ease-in-out infinite; }
+  @keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+  .faceimg { position: absolute; width: 30%; left: 34%; top: 7%; }
+  .accimg { position: absolute; }
+  .acc-hat   { width: 34%; left: 30%; top: -7%; }
+  .acc-crown { width: 30%; left: 32%; top: -5%; }
+  .acc-bow   { width: 22%; left: 14%; top: 12%; }
+  .acc-scarf { width: 32%; left: 30%; top: 52%; }
+  .egg {
+    position: absolute; left: 50%; bottom: 16%; transform: translateX(-50%);
+    font-size: 64px; animation: wobble 2.4s ease-in-out infinite;
+  }
+  @keyframes wobble { 0%,100% { transform: translateX(-50%) rotate(-4deg); }
+                      50% { transform: translateX(-50%) rotate(5deg); } }
+  .zzz {
+    position: absolute; right: 12%; top: 16%; font-size: 22px; font-weight: 700;
+    color: #8fb7dd; animation: zfloat 2s ease-in-out infinite; display: none;
+  }
+  .zzz.show { display: block; }
+  @keyframes zfloat { 0% { opacity: 0; transform: translateY(6px); }
+                      50% { opacity: 1; } 100% { opacity: 0; transform: translateY(-8px); } }
+  .bubble {
+    position: absolute; top: 6%; left: 50%; transform: translateX(-50%);
+    max-width: 76%; background: rgba(255,255,255,.95); border-radius: 14px;
+    padding: 8px 12px; font-size: 13px; font-weight: 700; text-align: center;
+    box-shadow: var(--shadow); opacity: 0; transition: opacity .3s; pointer-events: none;
+    border: 2px solid var(--pink); z-index: 3;
+  }
+  .bubble.show { opacity: 1; }
+  .bubble:after {
+    content: ''; position: absolute; bottom: -8px; left: 24px;
+    border: 8px solid transparent; border-top-color: var(--pink); border-bottom: 0;
+  }
+
+  /* --- stats --- */
+  .stats {
+    margin-top: 10px; background: var(--panel); border-radius: var(--r);
+    box-shadow: var(--shadow); padding: 10px 12px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px;
+  }
+  .stat { display: flex; align-items: center; gap: 6px; }
+  .stat .ico { font-size: 15px; width: 20px; text-align: center; flex: none; }
+  .sbar { flex: 1; height: 12px; border-radius: 7px; background: #EFE2D2; overflow: hidden; }
+  .sfill { height: 100%; border-radius: 7px; transition: width .5s; }
+  .f-sat  { background: #7ED49A; }
+  .f-mood { background: #C5A3F0; }
+  .f-en   { background: #8FC3EE; }
+  .f-hyg  { background: #7DD8E8; }
+  .stat .val { font-size: 11px; font-weight: 700; color: var(--ink-soft);
+               width: 34px; text-align: right; flex: none; }
+
+  /* --- action buttons --- */
+  .actions { margin-top: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .act {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--panel); border: none; border-radius: var(--r);
+    box-shadow: var(--shadow); padding: 9px 10px;
+    font-family: inherit; text-align: left; cursor: pointer;
+    transition: transform .1s;
+  }
+  .act:active { transform: scale(.96); }
+  .act:disabled { opacity: .45; cursor: default; }
+  .act:disabled:active { transform: none; }
+  .act .aico {
+    width: 34px; height: 34px; border-radius: 12px; flex: none;
+    display: flex; align-items: center; justify-content: center; font-size: 19px;
+  }
+  .act .aico img { width: 24px; height: 24px; }
+  .a-feed { background: var(--lemon); } .a-clean { background: var(--sky); }
+  .a-play { background: var(--pink); }  .a-sleep { background: var(--lilac); }
+  .a-pet  { background: var(--mint); }  .a-heal  { background: #FFD1D9; }
+  .act .alabel { font-size: 14px; font-weight: 700; line-height: 1.2; }
+  .act .asub { font-size: 10.5px; color: var(--ink-soft); font-weight: 700; }
+
+  /* --- tabs / views --- */
+  .view { display: none; }
+  .view.active { display: block; }
+  .card {
+    background: var(--panel); border-radius: var(--r); box-shadow: var(--shadow);
+    padding: 14px; margin-bottom: 10px;
+  }
+  .card h2 { font-size: 15px; margin-bottom: 10px; }
+  .muted { color: var(--ink-soft); font-size: 12.5px; line-height: 1.5; }
+
+  .shoprow {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 0; border-bottom: 1.5px dashed #F0E4D6;
+  }
+  .shoprow:last-child { border-bottom: none; }
+  .shoprow .sico { width: 34px; height: 34px; flex: none;
+                   display: flex; align-items: center; justify-content: center;
+                   font-size: 22px; }
+  .shoprow .sico img { width: 28px; height: 28px; }
+  .shoprow .info { flex: 1; min-width: 0; }
+  .shoprow .t { font-size: 14px; font-weight: 700; }
+  .shoprow .d { font-size: 11px; color: var(--ink-soft); font-weight: 700; }
+  .buy {
+    border: none; border-radius: 12px; padding: 8px 12px; font-family: inherit;
+    font-weight: 700; font-size: 12.5px; cursor: pointer; white-space: nowrap;
+    background: var(--lemon); color: var(--ink);
+  }
+  .buy.wear { background: var(--mint); }
+  .buy:active { transform: scale(.95); }
+  .buy:disabled { opacity: .45; }
+
+  .toprow {
+    display: flex; align-items: center; gap: 8px; padding: 7px 0;
+    font-size: 14px; font-weight: 700;
+  }
+  .toprow .medal { width: 26px; text-align: center; font-size: 17px; flex: none; }
+  .toprow .nm { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .toprow .stg { font-size: 11.5px; color: var(--ink-soft); white-space: nowrap; }
+  .toprow .pts { margin-left: auto; color: var(--coral); white-space: nowrap; }
+
+  .refcode {
+    font-size: 17px; font-weight: 700; letter-spacing: .5px;
+    background: var(--cream); border-radius: 12px; padding: 9px 12px;
+    display: inline-block; margin: 4px 0 10px;
+  }
+  .copybtn {
+    border: none; border-radius: 12px; padding: 10px 14px; margin-top: 8px;
+    font-family: inherit; font-weight: 700; font-size: 13px; cursor: pointer;
+    background: var(--pink); color: #fff; width: 100%;
+  }
+  .copybtn:active { transform: scale(.97); }
+  .linkbox {
+    background: var(--cream); border-radius: 12px; padding: 9px 12px;
+    font-size: 12px; color: var(--ink-soft); word-break: break-all; margin-top: 6px;
+    font-weight: 700;
+  }
+
+  .strow { display: flex; justify-content: space-between; gap: 10px;
+           padding: 6px 0; font-size: 13.5px; font-weight: 700; }
+  .strow .v { color: var(--ink-soft); text-align: right; }
+  .invline { font-size: 13px; line-height: 1.9; font-weight: 700; }
+
+  /* --- nav --- */
+  nav {
+    position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+    width: 100%; max-width: 430px;
+    display: flex; background: var(--panel);
+    border-top-left-radius: 20px; border-top-right-radius: 20px;
+    box-shadow: 0 -6px 20px rgba(91,74,63,.15); padding: 6px 4px 10px;
+    z-index: 10;
+  }
+  .tab {
+    flex: 1; border: none; background: none; font-family: inherit;
+    display: flex; flex-direction: column; align-items: center; gap: 1px;
+    font-size: 10px; font-weight: 700; color: var(--ink-soft); cursor: pointer;
+    padding: 4px 0;
+  }
+  .tab .tico { font-size: 19px; line-height: 1.2; }
+  .tab.active { color: var(--coral); }
+  .tab.active .tico { transform: scale(1.12); }
+
+  .errbox {
+    margin: 40px 16px; background: #fff; border-radius: var(--r);
+    box-shadow: var(--shadow); padding: 22px; text-align: center;
+    font-size: 14px; font-weight: 700; line-height: 1.6;
+  }
+  .toast {
+    position: fixed; left: 50%; bottom: 92px; transform: translateX(-50%);
+    background: rgba(91,74,63,.92); color: #fff; border-radius: 12px;
+    padding: 9px 16px; font-size: 12.5px; font-weight: 700;
+    opacity: 0; transition: opacity .3s; pointer-events: none; z-index: 20;
+    max-width: 86%; text-align: center;
+  }
+  .toast.show { opacity: 1; }
 </style>
 </head>
 <body>
-<div class="hd"><b id="nm">Питомец</b><span id="sg"></span></div>
-<div id="pc" class="s0">
-<svg viewBox="0 0 160 132">
-<g fill="#ffd98a" stroke="var(--tg-theme-text-color)" stroke-opacity=".25" stroke-width="1.5">
-<g class="eg g0"><path d="M46 52Q46 26 80 26T114 52V82Q114 106 80 106T46 82Z"/><circle cx="66" cy="54" r="4" fill="#ff9d6b" stroke="none"/><circle cx="92" cy="66" r="5" fill="#ff9d6b" stroke="none"/><circle cx="74" cy="86" r="3" fill="#ffb04d" stroke="none"/></g>
-<g class="bd g1"><circle cx="58" cy="66" r="7"/><circle cx="102" cy="66" r="7"/><ellipse cx="80" cy="88" rx="32" ry="24"/></g>
-<g class="bd g2"><path d="M50 62L44 46L60 54Z"/><path d="M110 62L116 46L100 54Z"/><path d="M116 96Q134 92 130 78" fill="none" stroke="#ffd98a" stroke-opacity="1" stroke-width="7" stroke-linecap="round"/><ellipse cx="80" cy="86" rx="38" ry="28"/></g>
-<g class="bd g3"><path d="M48 58L40 40L62 50Z"/><path d="M112 58L120 40L98 50Z"/><path d="M120 94Q140 90 136 72" fill="none" stroke="#ffd98a" stroke-opacity="1" stroke-width="8" stroke-linecap="round"/><ellipse cx="80" cy="84" rx="42" ry="32"/><ellipse cx="80" cy="97" rx="24" ry="11" fill="#ffe9b8" stroke="none"/></g>
-<g class="fc">
-<g class="eo" fill="var(--tg-theme-text-color)" stroke="none"><circle cx="64" cy="72" r="4.5"/><circle cx="96" cy="72" r="4.5"/></g>
-<g class="ec" fill="none" stroke="var(--tg-theme-text-color)" stroke-opacity="1" stroke-width="2.5" stroke-linecap="round"><path d="M58 72Q64 76 70 72"/><path d="M90 72Q96 76 102 72"/></g>
-<path class="mh" d="M70 82Q80 90 90 82" fill="none" stroke="var(--tg-theme-text-color)" stroke-opacity="1" stroke-width="2.5" stroke-linecap="round"/>
-<path class="ms" d="M70 87Q80 81 90 87" fill="none" stroke="var(--tg-theme-text-color)" stroke-opacity="1" stroke-width="2.5" stroke-linecap="round"/>
-<circle cx="52" cy="80" r="5" fill="#ffb3ab" stroke="none"/><circle cx="108" cy="80" r="5" fill="#ffb3ab" stroke="none"/>
-<g class="zz" fill="var(--tg-theme-hint-color)" stroke="none" font-weight="700"><text x="112" y="50" font-size="13">z</text><text x="124" y="40" font-size="10">z</text><text x="133" y="32" font-size="8">z</text></g>
-</g>
-<g class="ac ac-hat" fill="#e67e22" stroke="none"><rect x="50" y="46" width="60" height="7" rx="3"/><rect x="62" y="29" width="36" height="19" rx="4"/></g>
-<g class="ac ac-glasses" fill="none" stroke="#7f8c8d" stroke-opacity="1" stroke-width="2.5"><circle cx="64" cy="72" r="8"/><circle cx="96" cy="72" r="8"/><path d="M72 72h16"/></g>
-<g class="ac ac-bow" fill="#ff5f8f" stroke="none"><path d="M110 48l14 -8v16z"/><path d="M110 48l-14 -8v16z"/><circle cx="110" cy="48" r="4"/></g>
-<g class="ac ac-scarf" fill="#4aa3ff" stroke="none"><rect x="52" y="98" width="56" height="10" rx="5"/><path d="M96 104l6 18h-12z"/></g>
-</g>
-</svg>
+<div id="app">
+  <header>
+    <img class="avatar" src="/assets/avatar.png" alt="">
+    <div class="who">
+      <div class="name" id="petName">—</div>
+      <div class="xpwrap">
+        <div class="xpbar"><div class="xpfill" id="xpFill"></div></div>
+        <div class="lvl" id="lvlText">Lv 1</div>
+      </div>
+    </div>
+    <div class="pills">
+      <div class="pill"><img src="/assets/coin.png" alt=""><span id="coinVal">0</span></div>
+      <div class="pill hearts" id="heartsBox"></div>
+    </div>
+  </header>
+
+  <main>
+    <!-- HOME -->
+    <section class="view active" id="view-home">
+      <div class="room">
+        <img class="roomimg" src="/assets/room.png" alt="">
+        <div class="egg" id="eggBox" hidden>🥚</div>
+        <div class="petwrap" id="petWrap" hidden>
+          <img class="petbase" src="/assets/pet.png" alt="">
+          <img class="faceimg" src="/assets/face_1.png" alt="" id="petFace">
+          <div id="accLayer"></div>
+        </div>
+        <div class="zzz" id="zzz">z z z</div>
+        <div class="bubble" id="bubble"></div>
+      </div>
+      <div class="stats">
+        <div class="stat"><span class="ico">🍗</span><div class="sbar"><div class="sfill f-sat" id="bSat"></div></div><span class="val" id="vSat">0%</span></div>
+        <div class="stat"><span class="ico">😊</span><div class="sbar"><div class="sfill f-mood" id="bMood"></div></div><span class="val" id="vMood">0%</span></div>
+        <div class="stat"><span class="ico">⚡</span><div class="sbar"><div class="sfill f-en" id="bEn"></div></div><span class="val" id="vEn">0%</span></div>
+        <div class="stat"><span class="ico">🫧</span><div class="sbar"><div class="sfill f-hyg" id="bHyg"></div></div><span class="val" id="vHyg">0%</span></div>
+      </div>
+      <div class="actions">
+        <button class="act" id="btnFeed" onclick="doAction('feed')">
+          <span class="aico a-feed"><img src="/assets/apple.png" alt=""></span>
+          <span><span class="alabel">Покормить</span><br><span class="asub" id="subFeed">🍎 из инвентаря</span></span>
+        </button>
+        <button class="act" id="btnClean" onclick="doAction('clean')">
+          <span class="aico a-clean">🛁</span>
+          <span><span class="alabel">Помыть</span><br><span class="asub" id="subClean">+2🪙 · раз в 5 мин</span></span>
+        </button>
+        <button class="act" id="btnPlay" onclick="doAction('play')">
+          <span class="aico a-play"><img src="/assets/yarn.png" alt=""></span>
+          <span><span class="alabel">Играть</span><br><span class="asub">+настроение −энергия</span></span>
+        </button>
+        <button class="act" id="btnSleep" onclick="doAction('sleep')">
+          <span class="aico a-sleep">🌙</span>
+          <span><span class="alabel">Спать</span><br><span class="asub" id="subSleep">+3🪙/час</span></span>
+        </button>
+        <button class="act" id="btnPet" onclick="doAction('pet')">
+          <span class="aico a-pet"><img src="/assets/heart.png" alt=""></span>
+          <span><span class="alabel">Погладить</span><br><span class="asub">+настроение</span></span>
+        </button>
+        <button class="act" id="btnHeal" onclick="doAction('heal')">
+          <span class="aico a-heal"><img src="/assets/potion.png" alt=""></span>
+          <span><span class="alabel">Лечить</span><br><span class="asub" id="subHeal">нужно 💊</span></span>
+        </button>
+      </div>
+    </section>
+
+    <!-- SHOP -->
+    <section class="view" id="view-shop">
+      <div class="card">
+        <h2>🛒 Магазин · <span id="shopCoins">0</span>🪙</h2>
+        <div id="shopList"></div>
+      </div>
+      <div class="card">
+        <h2>🎒 Инвентарь</h2>
+        <div class="invline" id="invLine">пусто</div>
+      </div>
+    </section>
+
+    <!-- TOP -->
+    <section class="view" id="view-top">
+      <div class="card">
+        <h2>🏆 Топ попечителей</h2>
+        <div id="topList" class="muted">Загрузка…</div>
+      </div>
+    </section>
+
+    <!-- FRIENDS -->
+    <section class="view" id="view-friends">
+      <div class="card">
+        <h2>🎁 Приглашай друзей</h2>
+        <div class="muted">Твой реферальный код:</div>
+        <div class="refcode" id="refCode">ref_…</div>
+        <div class="muted">Друг вводит твой код боту — вы оба получаете <b>+50🪙</b>.</div>
+        <button class="copybtn" id="copyBtn">📋 Скопировать ссылку-приглашение</button>
+        <div class="linkbox" id="refLink"></div>
+      </div>
+    </section>
+
+    <!-- STATS -->
+    <section class="view" id="view-stats">
+      <div class="card">
+        <h2>📊 Статистика</h2>
+        <div class="strow"><span>Имя</span><span class="v" id="stName">—</span></div>
+        <div class="strow"><span>Стадия</span><span class="v" id="stStage">—</span></div>
+        <div class="strow"><span>Возраст</span><span class="v" id="stAge">—</span></div>
+        <div class="strow"><span>Очки ухода</span><span class="v" id="stCare">—</span></div>
+        <div class="strow"><span>Промахи в уходе</span><span class="v" id="stMiss">—</span></div>
+        <div class="strow"><span>Стрик посещений</span><span class="v" id="stStreak">—</span></div>
+        <div class="strow"><span>Наряд</span><span class="v" id="stWorn">—</span></div>
+      </div>
+      <div class="card">
+        <h2>🧬 Эволюция</h2>
+        <div class="muted">Яйцо 🥚 → Малыш 🐣 (3 дня) → Подросток 😼 (7 дней) → взрослый: <b>Мудрец 🎓</b> (идеальный уход), <b>Красавец ✨</b> (хороший уход) или <b>Хулиган 😈</b> (много промахов).</div>
+      </div>
+    </section>
+  </main>
+
+  <nav>
+    <button class="tab active" onclick="showTab('home', this)"><span class="tico">🏠</span>Дом</button>
+    <button class="tab" onclick="showTab('shop', this)"><span class="tico">🛒</span>Магазин</button>
+    <button class="tab" onclick="showTab('top', this)"><span class="tico">🏆</span>Топ</button>
+    <button class="tab" onclick="showTab('friends', this)"><span class="tico">🎁</span>Друзья</button>
+    <button class="tab" onclick="showTab('stats', this)"><span class="tico">📊</span>Статы</button>
+  </nav>
+  <div class="toast" id="toast"></div>
 </div>
-<div class="sr" id="w1"><div class="lb"><span>Сытость</span><span id="v1">–</span></div><div class="bt"><i id="b1"></i></div></div>
-<div class="sr" id="w2"><div class="lb"><span>Настроение</span><span id="v2">–</span></div><div class="bt"><i id="b2"></i></div></div>
-<div class="sr" id="w3"><div class="lb"><span>Энергия</span><span id="v3">–</span></div><div class="bt"><i id="b3"></i></div></div>
-<div class="rw"><button data-a="feed">🍎 Кормить</button><button data-a="play">🎾 Играть</button><button id="bs" data-a="sleep">😴 Сон</button><button data-a="pet">✋ Гладить</button><button data-a="clean">🛁 Мыть</button></div>
-<div id="m"></div>
+
 <script>
-const WA=window.Telegram,W=WA?WA.WebApp:null,G=id=>document.getElementById(id),ST=['🥚 Яйцо','🐣 Малыш','😼 Подросток','🎓 Мудрец','✨ Красавец','😈 Хулиган'];
-let rv=-1,pn=0;
-const btn=[];
-if(W){W.ready();W.expand();}
-const clamp=v=>Math.max(0,Math.min(100,v|0));
-const bar=(k,v)=>{v=clamp(v);G('v'+k).textContent=v+'%';G('b'+k).style.width=v+'%';const w=G('w'+k);if(v<25)w.classList.add('low');else w.classList.remove('low')};
-const dr=s=>{G('nm').textContent=s.n||'Питомец';G('sg').textContent=(s.sk?'🤒 ':'')+((ST[s.s]||ST[0])+' · 🪙'+(s.cn|0));const p=G('pc');p.classList.remove('s0','s1','s2','s3','s4','s5','sl','sad','a-hat','a-glasses','a-bow','a-scarf');p.classList.add('s'+(s.s||0));if(s.sl)p.classList.add('sl');if(s.sk||s.h<25||s.m<25)p.classList.add('sad');if(s.wn)p.classList.add('a-'+s.wn);bar('1',s.h);bar('2',s.m);bar('3',s.e);G('bs').textContent=s.sl?'☀️ Бодрить':'😴 Сон'};
-const ap=s=>{if(!s||typeof s.r!=='number'||s.r<=rv)return;rv=s.r;dr(s)};
-const api=(a,arg)=>fetch('/api/pet',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({initData:W?W.initData:'',action:a,arg:arg||''})}).then(r=>r.json());
-const send=a=>{if(pn)return;pn=1;btn.forEach(b=>b.disabled=1);G('m').textContent='…';api(a).then(r=>{pn=0;btn.forEach(b=>b.disabled=0);if(r.state)ap(r.state);G('m').textContent=r.message||r.hint||'';if(W&&W.HapticFeedback)W.HapticFeedback.notificationOccurred(r.state?'success':'error')},()=>{pn=0;btn.forEach(b=>b.disabled=0);G('m').textContent='Нет связи с ботом'})};
-document.querySelectorAll('.rw button').forEach(b=>{btn.push(b);b.addEventListener('click',()=>send(b.dataset.a))});
-api('sync').then(r=>{if(r.state)ap(r.state);G('m').textContent=r.message||r.hint||''}).catch(()=>G('m').textContent='Открой через бота в Telegram 🐣');
-setInterval(()=>{if(!pn)api('sync').then(r=>{if(r.state)ap(r.state)}).catch(()=>{})},30000);
+'use strict';
+var tg = (window.Telegram && window.Telegram.WebApp) ? window.Telegram.WebApp : null;
+var INIT = (tg && tg.initData) ? String(tg.initData) : '';
+var USER = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user : {};
+var BOT = '';
+var pet = null;
+
+var STAGE_NAMES = ['Яйцо 🥚', 'Малыш 🐣', 'Подросток 😼', 'Мудрец 🎓', 'Красавец ✨', 'Хулиган 😈'];
+var TEEN_DAYS = 3, ADULT_DAYS = 7;
+var CLEAN_CD = 300, PET_CD = 60, SCAV_CD = 180;
+var SHOP = [
+  {id:'apple',   title:'🍎 Яблоко',    price:5,  kind:'food',      desc:'+25 сытости',                 ico:'apple.png'},
+  {id:'fish',    title:'🐟 Рыбка',     price:10, kind:'food',      desc:'+30 сытости, +5 энергии',     ico:'fish.png'},
+  {id:'cake',    title:'🍰 Торт',      price:15, kind:'food',      desc:'+40 сытости, +10 настроения', ico:'cake.png'},
+  {id:'med',     title:'💊 Лекарство', price:20, kind:'med',       desc:'лечит болезнь',               ico:'potion.png'},
+  {id:'bow',     title:'🎀 Бантик',    price:30, kind:'accessory', desc:'наряд',                       ico:'bow.png'},
+  {id:'scarf',   title:'🧣 Шарф',      price:35, kind:'accessory', desc:'наряд',                       ico:'scarf.png'},
+  {id:'glasses', title:'🕶 Очки',      price:40, kind:'accessory', desc:'наряд',                       ico:''},
+  {id:'hat',     title:'🎩 Шляпа',     price:50, kind:'accessory', desc:'наряд',                       ico:'hat.png'}
+];
+
+function $(id) { return document.getElementById(id); }
+function authed() { return !!INIT; }
+
+function renderError(title, hint) {
+  document.querySelector('main').innerHTML =
+    '<div class="errbox">😿 ' + title + '<br><span class="muted">' + hint + '</span></div>';
+}
+
+function toast(text, ms) {
+  var t = $('toast');
+  t.textContent = text;
+  t.classList.add('show');
+  clearTimeout(t._h);
+  t._h = setTimeout(function() { t.classList.remove('show'); }, ms || 2600);
+}
+
+var bubbleTimer = null;
+function bubble(text, ms) {
+  var b = $('bubble');
+  if (!text) { b.classList.remove('show'); return; }
+  b.textContent = text;
+  b.classList.add('show');
+  clearTimeout(bubbleTimer);
+  bubbleTimer = setTimeout(function() { b.classList.remove('show'); }, ms || 4200);
+}
+
+function faceFor(p) {
+  if (p.sick) return 'face_3';
+  if (p.sleeping) return 'face_4';
+  if (p.satiety < 25 || p.mood < 25) return 'face_5';
+  if (p.mood >= 85) return 'face_8';
+  if (p.mood >= 70) return 'face_2';
+  if (p.mood >= 45) return (Math.floor(Date.now() / 30000) % 2) ? 'face_1' : 'face_7';
+  return 'face_6';
+}
+
+var ACC_ASSETS = { bow:'bow.png', scarf:'scarf.png', hat:'hat.png', crown:'crown.png' };
+
+function renderAcc() {
+  var layer = $('accLayer');
+  layer.innerHTML = '';
+  if (!pet || !pet.worn) return;
+  var w = pet.worn;
+  if (w === 'glasses') {
+    var g = document.createElement('span');
+    g.className = 'accimg acc-glasses';
+    g.style.fontSize = '26px';
+    g.style.lineHeight = '1';
+    g.textContent = '👓';
+    layer.appendChild(g);
+    return;
+  }
+  var file = ACC_ASSETS[w];
+  if (!file) return;
+  var img = document.createElement('img');
+  img.className = 'accimg acc-' + w;
+  img.src = '/assets/' + file;
+  img.alt = '';
+  layer.appendChild(img);
+}
+
+function renderHearts(mood) {
+  var box = $('heartsBox');
+  box.innerHTML = '';
+  var full = Math.ceil(mood / 20);
+  for (var i = 0; i < 5; i++) {
+    var img = document.createElement('img');
+    img.src = '/assets/' + (i < full ? 'heart_full.png' : 'heart_empty.png');
+    img.alt = '';
+    box.appendChild(img);
+  }
+}
+
+function xpInfo(p) {
+  var now = Math.floor(Date.now() / 1000);
+  var age = Math.max(0, now - p.born);
+  if (p.stage === 0) return { pct: 0, label: 'Lv 🥚' };
+  if (p.stage === 1) return { pct: Math.min(100, age / (TEEN_DAYS * 86400) * 100), label: 'Lv 1' };
+  if (p.stage === 2) return { pct: Math.min(100, age / (ADULT_DAYS * 86400) * 100), label: 'Lv 2' };
+  return { pct: 100, label: 'Lv MAX' };
+}
+
+function render(p) {
+  pet = p;
+  $('petName').textContent = p.name;
+  $('coinVal').textContent = p.coins;
+  $('shopCoins').textContent = p.coins;
+  renderHearts(p.mood);
+
+  var xp = xpInfo(p);
+  $('xpFill').style.width = xp.pct + '%';
+  $('lvlText').textContent = xp.label + ' · ' + STAGE_NAMES[p.stage].split(' ')[0];
+
+  var isEgg = p.stage === 0;
+  $('eggBox').hidden = !isEgg;
+  $('petWrap').hidden = isEgg;
+  if (!isEgg) {
+    $('petWrap').classList.toggle('sleeping', p.sleeping);
+    $('petFace').src = '/assets/' + faceFor(p) + '.png';
+    renderAcc();
+  }
+  $('zzz').classList.toggle('show', p.sleeping);
+  if (p.sick) bubble(p.name + ' заболел 🤒 — нужен 💊', 5000);
+
+  $('bSat').style.width = p.satiety + '%';  $('vSat').textContent = p.satiety + '%';
+  $('bMood').style.width = p.mood + '%';    $('vMood').textContent = p.mood + '%';
+  $('bEn').style.width = p.energy + '%';    $('vEn').textContent = p.energy + '%';
+  $('bHyg').style.width = p.hygiene + '%';  $('vHyg').textContent = p.hygiene + '%';
+
+  var now = Math.floor(Date.now() / 1000);
+  var foodCount = (p.inv.apple || 0) + (p.inv.fish || 0) + (p.inv.cake || 0);
+  var scavLeft = SCAV_CD - (now - (p.cooldowns.scavenge || 0));
+  var cleanLeft = CLEAN_CD - (now - (p.cooldowns.clean || 0));
+  var petLeft = PET_CD - (now - (p.cooldowns.pet || 0));
+
+  $('btnFeed').disabled = isEgg || (foodCount === 0 && scavLeft > 0);
+  $('subFeed').textContent = isEgg ? 'накорми — и вылупится!'
+    : foodCount > 0 ? ('🍎 ×' + foodCount + ' в инвентаре')
+    : scavLeft > 0 ? ('🌿 поиск через ' + Math.ceil(scavLeft / 60) + ' мин')
+    : '🌿 поищет еду сам';
+
+  $('btnClean').disabled = isEgg || cleanLeft > 0;
+  $('subClean').textContent = cleanLeft > 0 ? ('⏳ ' + Math.ceil(cleanLeft / 60) + ' мин')
+                                            : '+2🪙 · раз в 5 мин';
+
+  $('btnPlay').disabled = isEgg || p.sleeping || p.energy < 10;
+  $('btnSleep').disabled = isEgg;
+  $('subSleep').textContent = p.sleeping ? 'разбудить ☀️' : '+3🪙/час';
+
+  $('btnPet').disabled = isEgg || petLeft > 0;
+
+  var hasMed = (p.inv.med || 0) > 0;
+  $('btnHeal').disabled = !p.sick || !hasMed;
+  $('subHeal').textContent = p.sick
+    ? (hasMed ? '💊 есть — лечи!' : 'купи 💊 в магазине')
+    : 'здоров 😊';
+
+  renderShop();
+  renderInv();
+  renderStats();
+}
+
+function renderShop() {
+  var list = $('shopList');
+  list.innerHTML = '';
+  SHOP.forEach(function(it) {
+    var row = document.createElement('div');
+    row.className = 'shoprow';
+    var owned = it.kind === 'accessory' && pet && pet.acc.indexOf(it.id) >= 0;
+    var worn = pet && pet.worn === it.id;
+    var icoHtml = it.ico ? '<img src="/assets/' + it.ico + '" alt="">' : '👓';
+    row.innerHTML =
+      '<div class="sico">' + icoHtml + '</div>' +
+      '<div class="info"><div class="t">' + it.title + '</div>' +
+      '<div class="d">' + it.desc + (owned ? ' · куплено' : '') + '</div></div>';
+    var btn = document.createElement('button');
+    btn.className = 'buy' + (owned ? ' wear' : '');
+    if (owned) {
+      btn.textContent = worn ? 'Снять' : 'Надеть';
+      btn.onclick = function() { doAction('wear', it.id); };
+    } else {
+      btn.textContent = it.price + '🪙';
+      btn.disabled = !pet || pet.coins < it.price;
+      btn.onclick = function() { doAction('buy', it.id); };
+    }
+    row.appendChild(btn);
+    list.appendChild(row);
+  });
+}
+
+function renderInv() {
+  var names = { apple:'🍎', fish:'🐟', cake:'🍰', med:'💊' };
+  var parts = [];
+  Object.keys(pet.inv).forEach(function(k) {
+    if (pet.inv[k] > 0 && names[k]) parts.push(names[k] + ' ×' + pet.inv[k]);
+  });
+  $('invLine').textContent = parts.length ? parts.join('  ')
+    : 'пусто — покорми, и питомец найдёт еду сам 🌿';
+}
+
+function pluralRu(n, one, few, many) {
+  var m10 = n % 10, m100 = n % 100;
+  if (m10 === 1 && m100 !== 11) return one;
+  if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return few;
+  return many;
+}
+
+function renderStats() {
+  if (!pet) return;
+  var now = Math.floor(Date.now() / 1000);
+  var days = Math.floor((now - pet.born) / 86400);
+  $('stName').textContent = pet.name;
+  $('stStage').textContent = STAGE_NAMES[pet.stage];
+  $('stAge').textContent = days === 0 ? 'меньше дня'
+    : (days + ' ' + pluralRu(days, 'день', 'дня', 'дней'));
+  $('stCare').textContent = pet.care_score;
+  $('stMiss').textContent = pet.care_miss;
+  $('stStreak').textContent = pet.streak + ' 🔥';
+  var wornItem = pet.worn ? SHOP.filter(function(x) { return x.id === pet.worn; })[0] : null;
+  $('stWorn').textContent = wornItem ? wornItem.title : 'без наряда';
+}
+
+function apiState() {
+  return fetch('/api/state?initData=' + encodeURIComponent(INIT));
+}
+
+function apiAction(action, arg) {
+  return fetch('/api/pet', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ initData: INIT, action: action, arg: arg || '' })
+  });
+}
+
+function handleAuthOrMissing(res) {
+  if (res.status === 404) { renderError('Питомец не найден', 'Отправь боту /start 🐣'); return true; }
+  if (res.status === 401) { renderError('Открой мини-апп через бота', 'Нажми кнопку «🐣 Питомец» в чате'); return true; }
+  return false;
+}
+
+function doAction(action, arg) {
+  if (!pet) return;
+  var btnMap = { feed:'btnFeed', clean:'btnClean', play:'btnPlay', sleep:'btnSleep',
+                 pet:'btnPet', heal:'btnHeal' };
+  var btn = btnMap[action] ? $(btnMap[action]) : null;
+  if (btn) btn.disabled = true;
+  apiAction(action, arg).then(function(res) {
+    if (handleAuthOrMissing(res)) return;
+    return res.json().then(function(data) {
+      if (data.state) render(data.state);
+      if (data.message) { bubble(data.message); if (arg) toast(data.message); }
+      if (tg && tg.HapticFeedback && data.state) {
+        try { tg.HapticFeedback.impactOccurred('light'); } catch (e) {}
+      }
+    });
+  }).catch(function() {
+    toast('Нет связи 😿 попробуй ещё раз');
+    if (btn) btn.disabled = false;
+  });
+}
+
+function loadTop() {
+  fetch('/api/top?initData=' + encodeURIComponent(INIT)).then(function(r) { return r.json(); })
+    .then(function(res) {
+      var box = $('topList');
+      var rows = res.rows || [];
+      if (!rows.length) { box.textContent = 'Питомцев ещё нет — позови друзей!'; return; }
+      var medals = ['🥇', '🥈', '🥉'];
+      box.innerHTML = '';
+      box.classList.remove('muted');
+      rows.forEach(function(row, i) {
+        var div = document.createElement('div');
+        div.className = 'toprow';
+        div.innerHTML =
+          '<span class="medal">' + (medals[i] || (i + 1) + '.') + '</span>' +
+          '<span class="nm">' + row.name + '</span>' +
+          '<span class="stg">' + STAGE_NAMES[Math.min(row.stage || 0, 5)] + '</span>' +
+          '<span class="pts">' + row.care_score + ptsWord(row.care_score) + '</span>';
+        box.appendChild(div);
+      });
+    }).catch(function() { $('topList').textContent = 'Нет связи 😿'; });
+}
+
+function ptsWord(n) {
+  var m10 = n % 10, m100 = n % 100;
+  if (m10 === 1 && m100 !== 11) return ' очко';
+  if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return ' очка';
+  return ' очков';
+}
+
+function showTab(name, el) {
+  document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+  if (el) el.classList.add('active');
+  document.querySelectorAll('.view').forEach(function(v) { v.classList.remove('active'); });
+  $('view-' + name).classList.add('active');
+  if (name === 'top') loadTop();
+}
+
+function initFriends() {
+  if (!USER.id) return;
+  var code = 'ref_' + USER.id;
+  var link = 'https://t.me/' + BOT + '?start=' + code;
+  $('refCode').textContent = code;
+  $('refLink').textContent = link;
+  $('copyBtn').onclick = function() {
+    var done = function() {
+      $('copyBtn').textContent = '✅ Скопировано!';
+      setTimeout(function() {
+        $('copyBtn').textContent = '📋 Скопировать ссылку-приглашение';
+      }, 2000);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(link).then(done);
+    } else {
+      var ta = document.createElement('textarea');
+      ta.value = link;
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+  };
+}
+
+function boot() {
+  if (tg) {
+    try { tg.ready(); tg.expand(); } catch (e) {}
+    try { tg.setHeaderColor('#FDF3E7'); tg.setBackgroundColor('#FDF3E7'); } catch (e) {}
+  }
+  if (!authed()) {
+    renderError('Нет данных Telegram',
+      'Открой мини-апп через бота — кнопка «🐣 Питомец» в чате.');
+    return;
+  }
+  apiState().then(function(res) {
+    if (handleAuthOrMissing(res)) return null;
+    return res.json();
+  }).then(function(data) {
+    if (!data) return;
+    BOT = data.bot || 'sertamagotchi_bot';
+    render(data.pet);
+    initFriends();
+    setInterval(function() {
+      apiState().then(function(r) { return r.json(); })
+        .then(function(d) { if (d.pet) render(d.pet); }).catch(function() {});
+    }, 30000);
+  }).catch(function() {
+    renderError('Нет связи с сервером', 'Проверь интернет и открой заново');
+  });
+}
+
+boot();
 </script>
 </body>
 </html>

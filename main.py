@@ -92,7 +92,8 @@ async def amain() -> None:
         await api.set_my_commands(BOT_COMMANDS)
         app = App(api, db, widget_html, bot_username=me['username'], bot_id=me['id'],
                   web_app_url='')
-        runner = await run_web_server(app, token, webapp_html, WEB_PORT)
+        runner = await run_web_server(app, token, webapp_html, WEB_PORT,
+                                      assets_dir=root / 'webapp' / 'assets')
         logging.info('web server ready on port %d (waiting for tunnel url)', WEB_PORT)
         refresher = asyncio.create_task(refresh_menu_button(api, root, app))
         try:

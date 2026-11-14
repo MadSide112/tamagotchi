@@ -237,7 +237,7 @@ class App:
                     log.warning('editMessageWidgetData failed: %s', err.description)
             await self.db.save_pet(user_id, row['chat_id'], row['message_id'],
                                    st.to_json(), row['warn_ts'], row['sick_warn'], now)
-            return st.public_dict(), message
+            return st.web_dict(), message
 
     # --- /start flow --------------------------------------------------------
 

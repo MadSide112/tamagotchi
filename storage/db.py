@@ -5,6 +5,7 @@ single asyncio loop, so a single connection with a mutex is sufficient and
 keeps the dependency list at just aiohttp.
 """
 import asyncio
+import json
 import sqlite3
 import threading
 from typing import Any, Dict, Optional
@@ -74,14 +75,26 @@ class Db:
         )
 
     async def list_pets(self, limit: int = 10) -> list:
+        # name/stage/care_score живут внутри state JSON, поэтому сортируем в Python
         rows = await asyncio.to_thread(
             self._run,
-            'SELECT name, stage, care_score FROM pets ORDER BY care_score DESC, '
-            'updated_at ASC LIMIT ?',
-            (limit,),
+            'SELECT state, updated_at FROM pets',
+            (),
             'all',
         )
-        return [{'name': r[0], 'stage': r[1], 'care_score': r[2]} for r in rows or []]
+        pets = []
+        for state_json, updated_at in rows or []:
+            try:
+                st = json.loads(state_json)
+            except (ValueError, TypeError):
+                continue
+            pets.append(({
+                'name': st.get('n', '???'),
+                'stage': st.get('s', 0),
+                'care_score': st.get('cs', 0),
+            }, updated_at))
+        pets.sort(key=lambda p: (-p[0]['care_score'], p[1]))
+        return [p[0] for p in pets[:limit]]
 
     async def all_pet_ids(self) -> list:
         rows = await asyncio.to_thread(
