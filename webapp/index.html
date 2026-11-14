@@ -575,7 +575,8 @@ function render(p) {
   var cleanLeft = CLEAN_CD - (now - (p.cooldowns.clean || 0));
   var petLeft = PET_CD - (now - (p.cooldowns.pet || 0));
 
-  $('btnFeed').disabled = isEgg || (foodCount === 0 && scavLeft > 0);
+  // кормить яйцо можно всегда — первое кормление и есть вылупление (engine._apply_feed)
+  $('btnFeed').disabled = !isEgg && (foodCount === 0 && scavLeft > 0);
   $('subFeed').textContent = isEgg ? 'накорми — и вылупится!'
     : foodCount > 0 ? ('🍎 ×' + foodCount + ' в инвентаре')
     : scavLeft > 0 ? ('🌿 поиск через ' + Math.ceil(scavLeft / 60) + ' мин')
