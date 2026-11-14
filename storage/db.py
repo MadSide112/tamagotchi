@@ -20,43 +20,70 @@ CREATE TABLE IF NOT EXISTS pets (
 );
 """
 
-_ROW_KEYS = ('user_id', 'chat_id', 'message_id', 'state', 'warn_ts', 'updated_at')
+_ROW_KEYS = ('user_id', 'chat_id', 'message_id', 'state', 'warn_ts', 'sick_warn', 'updated_at')
 
 
 class Db:
     def __init__(self, path: str) -> None:
         self._conn = sqlite3.connect(path, check_same_thread=False)
         self._conn.execute(_SCHEMA)
+        self._migrate()
         self._conn.commit()
         self._lock = threading.Lock()
 
-    def _run(self, sql: str, params: tuple = (), fetch: bool = False):
+    def _migrate(self) -> None:
+        cols = {r[1] for r in self._conn.execute('PRAGMA table_info(pets)')}
+        if 'sick_warn' not in cols:
+            self._conn.execute(
+                'ALTER TABLE pets ADD COLUMN sick_warn INTEGER NOT NULL DEFAULT 0')
+
+    def _run(self, sql: str, params: tuple = (), fetch: str = ''):
         with self._lock:
             cur = self._conn.execute(sql, params)
-            row = cur.fetchone() if fetch else None
+            row = None
+            if fetch == 'one':
+                row = cur.fetchone()
+            elif fetch == 'all':
+                row = cur.fetchall()
             self._conn.commit()
             return row
 
     async def get_pet(self, user_id: int) -> Optional[Dict[str, Any]]:
         row = await asyncio.to_thread(
             self._run,
-            'SELECT user_id, chat_id, message_id, state, warn_ts, updated_at '
+            'SELECT user_id, chat_id, message_id, state, warn_ts, sick_warn, updated_at '
             'FROM pets WHERE user_id = ?',
             (user_id,),
-            True,
+            'one',
         )
         if row is None:
             return None
         return dict(zip(_ROW_KEYS, row))
 
     async def save_pet(self, user_id: int, chat_id: int, message_id: Optional[int],
-                       state_json: str, warn_ts: int, now: int) -> None:
+                       state_json: str, warn_ts: int, sick_warn: int, now: int) -> None:
         await asyncio.to_thread(
             self._run,
-            'INSERT INTO pets(user_id, chat_id, message_id, state, warn_ts, updated_at) '
-            'VALUES(?,?,?,?,?,?) '
+            'INSERT INTO pets(user_id, chat_id, message_id, state, warn_ts, sick_warn, '
+            'updated_at) VALUES(?,?,?,?,?,?,?) '
             'ON CONFLICT(user_id) DO UPDATE SET chat_id=excluded.chat_id, '
             'message_id=excluded.message_id, state=excluded.state, '
-            'warn_ts=excluded.warn_ts, updated_at=excluded.updated_at',
-            (user_id, chat_id, message_id, state_json, warn_ts, now),
+            'warn_ts=excluded.warn_ts, sick_warn=excluded.sick_warn, '
+            'updated_at=excluded.updated_at',
+            (user_id, chat_id, message_id, state_json, warn_ts, sick_warn, now),
         )
+
+    async def list_pets(self, limit: int = 10) -> list:
+        rows = await asyncio.to_thread(
+            self._run,
+            'SELECT name, stage, care_score FROM pets ORDER BY care_score DESC, '
+            'updated_at ASC LIMIT ?',
+            (limit,),
+            'all',
+        )
+        return [{'name': r[0], 'stage': r[1], 'care_score': r[2]} for r in rows or []]
+
+    async def all_pet_ids(self) -> list:
+        rows = await asyncio.to_thread(
+            self._run, 'SELECT user_id FROM pets ORDER BY updated_at ASC', (), 'all')
+        return [r[0] for r in rows or []]
