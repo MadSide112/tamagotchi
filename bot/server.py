@@ -29,8 +29,12 @@ from aiohttp import web
 
 from bot.security import validate_init_data
 from game import engine
+from game import progress
+from game.balance import CLASSES, FRIEND_ACC, MAX_LEVEL, MG_ENERGY_COST, QUEST_POOL
 from game.cases import ui_meta as cases_ui_meta
+from game.minigames import games_meta
 from game.pets import SPECIES
+from game.state import PetState
 
 log = logging.getLogger('tg.server')
 
@@ -149,9 +153,31 @@ def build_web_app(app, bot_token: str, webapp_html: str,
         species_meta = [{'id': sid, 'title': sp['title'], 'img': sp['img'],
                          'faces': sp['faces'], 'where': sp.get('where', '')}
                         for sid, sp in SPECIES.items()]
+        # прогресс ачивок (только чтение — метрики для UI)
+        row = await app.db.get_pet(user_id)
+        achv_progress = (progress.progress_for(PetState.from_json(row['state']))
+                         if row else {})
         return web.json_response({'pet': state, 'bot': app.bot_username,
+                                  'achv_progress': achv_progress,
                                   'meta': {'species': species_meta,
-                                           'cases': cases_ui_meta()}})
+                                           'cases': cases_ui_meta(),
+                                           'games': games_meta(),
+                                           'energy_cost': int(MG_ENERGY_COST),
+                                           'room': progress.room_meta(),
+                                           'classes': [
+                                               {'id': cid, 'title': c['title'],
+                                                'stat': c['stat'], 'desc': c['desc']}
+                                               for cid, c in CLASSES.items()],
+                                           'quests_pool': [
+                                               {'id': q['id'], 'title': q['title'],
+                                                'reward': q['reward']}
+                                               for q in QUEST_POOL],
+                                           'achv': progress.achv_meta(),
+                                           'friend': [
+                                               {'id': fid, 'title': f['title'],
+                                                'need': f['need']}
+                                               for fid, f in FRIEND_ACC.items()],
+                                           'max_level': MAX_LEVEL}})
 
     @routes.get('/api/top')
     async def api_top(request: web.Request) -> web.Response:

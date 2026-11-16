@@ -7,17 +7,26 @@ Server-authoritative rules implemented here:
 - in groups the bot answers only commands addressed to it, mentions and replies.
 """
 import asyncio
+import calendar
 import json
 import logging
 import time
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 
 from bot.api import ApiError, TelegramApi
 from game import engine
+from game import progress
 from game.balance import (
+    FRIEND_ACC,
+    FRIEND_POINTS_PER_VISIT,
+    FRIEND_VISIT_COOLDOWN_HOURS,
     HUNGRY_NOTIFY_EVERY_SECONDS,
     HUNGRY_NOTIFY_AT,
+    MG_DAILY_COIN_CAP,
+    MG_ENERGY_COST,
     NAME_MAX_LEN,
+    QUEST_ALL_BONUS,
+    QUEST_POOL,
     REF_BONUS,
     SICK_NOTIFY_EVERY_SECONDS,
     SHOP,
@@ -25,7 +34,7 @@ from game.balance import (
     START_COINS,
     STAGE_NAMES,
 )
-from game.promo import normalize as promo_normalize
+from game.promo import PROMO_CODES, normalize as promo_normalize
 from game.state import PetState
 from storage.db import Db
 
@@ -54,13 +63,33 @@ HELP_TEXT = (
     'МОНЕТЫ 🪙\n'
     'Копятся во сне (+3/ч), за мытьё (+2), за ежедневный стрик '
     '(+10 и +5 за каждый день подряд, кап +60) и за друзей (/ref).\n\n'
+    'ПРОГРЕСС 2.0 🎮\n'
+    'Действия дают опыт: уровни, скрытые статы (сила/ум/харизма) и класс '
+    'взрослого: Воин ⚔️ +15%% монет в играх, Маг 🔮 +20%% XP, '
+    'Аристократ 👑 −25%% голод.\n'
+    'На 30 уровне — /prestige: питомец в Зал Славы 🏛, новое яйцо, '
+    '+10%% XP навсегда за каждое поколение.\n'
+    '/games — мини-игры (монеты капятся на день: %d🪙)\n'
+    '/quests — 3 квеста в день, все три — бонус +%d🪙\n\n'
     'МАГАЗИН И ПРОЧЕЕ\n'
     '/shop — список товаров · /buy <id> — купить\n'
     '/wear <id>|off — надеть/снять аксессуар\n'
     '/stats — все статы · /top — лидерборд\n'
-    '/ref [код] — свой код приглашения или ввод чужого'
+    '/ref [код] — свой код приглашения или ввод чужого\n'
+    'Друзья: визиты в гости из Mini App — очки дружбы → 💍 кольцо'
+    % (MG_DAILY_COIN_CAP, QUEST_ALL_BONUS)
 )
 GROUP_HINT = 'Я тамагочи-бот 🐣 Питомец заводится в личке — напиши мне /start.'
+
+GAMES_TEXT = (
+    '🎮 Мини-игры — по одному пальцу:\n'
+    '🍎 Ловец вкусняшек: ловь еду, уворачивайся от бомб (сила)\n'
+    '🎣 Тайминг-рыбалка: останови ползунок в зелёной зоне (сила)\n'
+    '🧪 Алхимия памяти: повтори последовательность колб (ум и 💎)\n\n'
+    'Одна игра стоит %d энергии; монеты за игры капятся на день (%d🪙).\n'
+    'Играть — в Mini App во вкладке 🎮.'
+    % (MG_ENERGY_COST, MG_DAILY_COIN_CAP)
+)
 
 _TEXT_ANSWER_LIMIT = 1024
 
@@ -157,6 +186,15 @@ class App:
                 await self._rename(user_id, chat_id, args)
             elif cmd == 'stats':
                 await self._stats(user_id, chat_id)
+            elif cmd == 'quests':
+                if args.strip().lower() == 'claim':
+                    await self._run_action(user_id, chat_id, 'quest_claim')
+                else:
+                    await self._quests(user_id, chat_id)
+            elif cmd == 'games':
+                await self.api.send_message(chat_id, GAMES_TEXT)
+            elif cmd == 'prestige':
+                await self._run_action(user_id, chat_id, 'prestige', '')
             elif cmd == 'help':
                 await self.api.send_message(chat_id, HELP_TEXT)
             elif private:
@@ -223,17 +261,30 @@ class App:
             st = PetState.from_json(row['state'])
             events = engine.tick(st, now)
             bonus = engine.update_streak(st, now)
+            if action == 'visit':
+                st, message = await self._visit(user_id, st, row, arg, now)
+                return st.web_dict(), message
             if action == 'promo':
                 arg = promo_normalize(arg)
                 if not arg:
                     return st.web_dict(), 'Введи промокод'
                 if await self.db.promo_redeemed(user_id, arg):
                     return st.web_dict(), 'Этот промокод уже активирован 🙈'
+                pdata = PROMO_CODES.get(arg)
+                if pdata and 'active_until' in pdata:
+                    deadline = calendar.timegm(
+                        time.strptime(pdata['active_until'], '%Y-%m-%d')) + 86400
+                    if now >= deadline:
+                        return st.web_dict(), 'Срок действия этого промокода истёк.'
+                if pdata and 'max_uses' in pdata:
+                    if await self.db.promo_uses(arg) >= pdata['max_uses']:
+                        return st.web_dict(), 'Лимит активаций этого промокода исчерпан.'
             st, message, changed = engine.apply(st, action, arg, now)
             if changed:
                 st.rev += 1
                 if action == 'promo':
                     await self.db.promo_mark(user_id, arg, now)
+                    await self.db.promo_inc(arg)
             if bonus:
                 message = (message + '\n' if message else '') + \
                     '🔥 Стрик %d: +%d🪙' % (st.streak, bonus)
@@ -438,6 +489,7 @@ class App:
                 await self.api.send_message(chat_id, 'Сначала заведи питомца: /start 🐣')
                 return
             st = PetState.from_json(row['state'])
+            now = int(time.time())
             if item_id == 'off':
                 st.worn = ''
                 reply = 'Снял всё нарядное'
@@ -457,6 +509,74 @@ class App:
             await self.db.save_pet(user_id, chat_id, row['message_id'], st.to_json(),
                                    row['warn_ts'], row['sick_warn'], now)
             await self.api.send_message(chat_id, '✅ %s' % reply)
+
+    async def _quests(self, user_id: int, chat_id: int) -> None:
+        async with self._lock(user_id):
+            row = await self.db.get_pet(user_id)
+            if row is None:
+                await self.api.send_message(chat_id, 'Сначала заведи питомца: /start 🐣')
+                return
+            now = int(time.time())
+            st = PetState.from_json(row['state'])
+            progress.ensure_quests(st, now)
+            lines = ['📋 Квесты дня:']
+            for qid, need, prog in st.quests:
+                meta = next((q for q in QUEST_POOL if q['id'] == qid), None)
+                title = meta['title'] if meta else qid
+                reward = meta['reward'] if meta else 10
+                done = prog >= need
+                lines.append('%s %s — %d/%d (награда %d🪙)'
+                             % ('✅' if done else '⬜', title, prog, need, reward))
+            if st.q_claimed:
+                lines.append('Награды за день уже получены ✅')
+            else:
+                lines.append('Забрать: /quests claim (все три → бонус +%d🪙)'
+                             % QUEST_ALL_BONUS)
+            await self.db.save_pet(user_id, chat_id, row['message_id'],
+                                   st.to_json(), row['warn_ts'], row['sick_warn'], now)
+            await self.api.send_message(chat_id, '\n'.join(lines))
+
+    async def _visit(self, user_id: int, st: PetState, row, arg: str,
+                     now: int) -> Tuple[PetState, str]:
+        """Визит в гости к другу. Гость: +1 очко дружбы (кулдаун 20 ч),
+        хозяину питомца +3 сытости. При 10 очках — 💍 Кольцо дружбы."""
+        target_id = (arg or '').strip()
+        if not target_id.isdigit():
+            return st, 'Не понял, к кому в гости 🤔'
+        target_id = int(target_id)
+        if target_id == user_id:
+            return st, 'К себе в гости не сходишь 🙂'
+        frow = await self.db.get_pet(target_id)
+        if not frow:
+            return st, 'У этого пользователя ещё нет питомца 🐣'
+        key = 'vis_%d' % target_id
+        last = st.cooldowns.get(key, 0)
+        if now - last < FRIEND_VISIT_COOLDOWN_HOURS * 3600:
+            wait_h = int((FRIEND_VISIT_COOLDOWN_HOURS * 3600
+                          - (now - last) + 3599) // 3600)
+            cool_name = PetState.from_json(frow['state']).name
+            return st, ('К %s ты уже приходил — следующий визит через ~%d ч.'
+                        % (cool_name, wait_h))
+        fst = PetState.from_json(frow['state'])
+        fname = fst.name
+        st.cooldowns[key] = now
+        st.friend_pts = min(999, st.friend_pts + FRIEND_POINTS_PER_VISIT)
+        fst.satiety = min(100.0, fst.satiety + 3.0)
+        fst.rev += 1
+        messages = ['🚪 Ты в гостях у %s! +1 очко дружбы.' % fname]
+        for acc_id, meta in FRIEND_ACC.items():
+            if acc_id in st.acc:
+                continue
+            if st.friend_pts >= meta['need']:
+                st.acc.append(acc_id)
+                messages.append('🎉 Дружба крепка: получен %s!' % meta['title'])
+        messages.append('🍖 %s подкрепился в гостях (+3 сытости).' % fname)
+        await self.db.save_pet(user_id, row['chat_id'], row['message_id'],
+                               st.to_json(), row['warn_ts'], row['sick_warn'], now)
+        await self.db.save_pet(target_id, frow['chat_id'], frow['message_id'],
+                               fst.to_json(), frow['warn_ts'], frow['sick_warn'], now)
+        st.rev += 1
+        return st, '\n'.join(messages)
 
     # --- leaderboard / rename / stats ----------------------------------------
 

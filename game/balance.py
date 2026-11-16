@@ -81,4 +81,90 @@ SICK_NOTIFY_EVERY_SECONDS = 8 * 3600
 
 # --- safety ---
 MAX_OFFLINE_SECONDS = 48 * 3600  # decay cap: a long absence must not be fatal
-NAME_MAX_LEN = 16
+NAME_MAX_LEN = 15
+
+# ======================= PROGRESSION 2.0 =======================
+
+# --- XP и уровни (ось прогрессии, независимая от стадии эволюции) ---
+LEVEL_XP_BASE = 60   # XP для перехода с 1 на 2 уровень
+LEVEL_XP_STEP = 26   # need(l) = LEVEL_XP_BASE + LEVEL_XP_STEP*(l-1)
+MAX_LEVEL = 30
+# XP за успешные действия по уходу (меньше, чем в мини-играх — забота фоновая)
+XP_GRANTS = {'feed': 3, 'clean': 3, 'play': 4, 'pet': 2, 'heal': 6}
+QUEST_CLAIM_XP = 15          # XP за сдачу всех дневных квестов
+BOOST_XP_MULT = 2.0          # «Эликсир роста» (промокод)
+GEN_XP_BONUS = 0.10          # +10% XP за каждое поколение (Зал Славы)
+
+# --- скрытые статы и классы взрослого ---
+HIDDEN_CAP = 100.0
+CLASS_MIN_STAT = 20.0        # доминирующий стат нужен >= порога, иначе класс не присвоен
+CHARISMA_PER_HOUR = 0.6      # капает, пока чистота >= CHARISMA_HYGIENE_MIN
+CHARISMA_HYGIENE_MIN = 90.0
+WEAR_CHARISMA = 2.0          # за надевание аксессуара
+CLASS_XP_MULT_MAGE = 1.2     # маг: +20% XP от мини-игр и квестов
+CLASS_COIN_MULT_WARRIOR = 1.15  # воин: +15% монет в мини-играх
+HUNGER_DECAY_NOBLE_MULT = 0.75  # аристократ: голод падает на 25% медленнее
+CLASSES = {
+    'warrior': {'title': 'Воин ⚔️', 'stat': 'p', 'desc': '+15% монет в мини-играх'},
+    'mage': {'title': 'Маг 🔮', 'stat': 'iq', 'desc': '+20% XP в мини-играх и квестах'},
+    'noble': {'title': 'Аристократ 👑', 'stat': 'ch', 'desc': '−25% голод'},
+}
+
+# --- комната: улучшения (магазин kind='room', цены за уровень) ---
+ROOM = {
+    'bowl': {'title': '🥣 Миска', 'prices': [60, 140, 280],
+             'desc': 'кормление даёт +4 сытости за уровень'},
+    'bed': {'title': '🛏 Кровать', 'prices': [80, 180, 340],
+            'desc': 'сон восстанавливает +15% энергии в час за уровень'},
+    'zone': {'title': '🎾 Игровая зона', 'prices': [90, 200, 360],
+             'desc': '+25% настроения за игру и +5% очков мини-игр за уровень'},
+    'tree': {'title': '🌳 Денежное дерево', 'prices': [250, 500],
+             'desc': '+3🪙 в час за уровень, собери тапом (копит 12 ч)'},
+}
+TREE_COINS_PER_HOUR = 3.0    # за уровень дерева
+TREE_CAP_HOURS = 12.0        # дерево копит не дольше 12 ч
+BOWL_SATIETY_PER_LEVEL = 4.0
+BED_REGEN_PER_LEVEL = 0.15
+ZONE_PLAY_MOOD_PER_LEVEL = 0.25
+ZONE_SCORE_PER_LEVEL = 0.05
+
+# --- мини-игры ---
+MG_ENERGY_COST = 15.0        # списывается при зачтённом финише
+MG_MIN_SECONDS = 15          # короче — результат не засчитан (анти-чит)
+MG_MAX_SECONDS = 300
+MG_DAILY_COIN_CAP = 250      # мягкий кап монет из мини-игр в сутки (UTC)
+MG_GAMES_DAILY_CAP = 40
+MG_GEMS_DAILY_CAP = 5
+MG_SCORE_CAPS = {'catch': 120, 'fish': 5, 'simon': 12}
+MG_GAMES = {
+    'catch': {'title': '🧺 Ловец вкусняшек', 'stat': 'p',
+              'desc': 'Веди пальцем — лови вкусняшки, уворачивайся от бомб'},
+    'fish': {'title': '🎣 Тайминг-рыбалка', 'stat': 'p',
+             'desc': 'Тапни, когда ползунок в зелёной зоне — 5 забросов'},
+    'simon': {'title': '⚗️ Алхимия памяти', 'stat': 'iq',
+              'desc': 'Повторяй последовательность вспышек на колбах'},
+}
+MG_GEM_ROUND = 6             # симон: кристаллы начинают капать с этого раунда
+
+# --- дневные квесты (3 случайных из пула, детерминированно на день) ---
+QUEST_POOL = (
+    {'id': 'feed3', 'act': 'feed', 'need': 3, 'reward': 15, 'title': 'Покормить 3 раза'},
+    {'id': 'clean2', 'act': 'clean', 'need': 2, 'reward': 15, 'title': 'Помыть 2 раза'},
+    {'id': 'pet5', 'act': 'pet', 'need': 5, 'reward': 12, 'title': 'Погладить 5 раз'},
+    {'id': 'case1', 'act': 'open_case', 'need': 1, 'reward': 20, 'title': 'Открыть сундук'},
+    {'id': 'buy1', 'act': 'buy', 'need': 1, 'reward': 15, 'title': 'Купить любой товар'},
+    {'id': 'mg2', 'act': 'game_end', 'need': 2, 'reward': 20, 'title': 'Сыграть 2 мини-игры'},
+    {'id': 'sleep1', 'act': 'sleep', 'need': 1, 'reward': 10, 'title': 'Уложить спать'},
+    {'id': 'heal1', 'act': 'heal', 'need': 1, 'reward': 15, 'title': 'Вылечить питомца'},
+)
+QUESTS_PER_DAY = 3
+QUEST_ALL_BONUS = 25         # бонус за все три квеста дня
+
+# --- осколки яиц редких питомцев (мифический сундук) ---
+FRAG_NEED = {'fox': 5, 'panda': 8, 'snow_leopard': 12}
+FRAG_DUPE_COINS = 150        # осколки на уже собранного питомца
+
+# --- дружба: визиты в комнату друга ---
+FRIEND_POINTS_PER_VISIT = 1
+FRIEND_VISIT_COOLDOWN_HOURS = 20
+FRIEND_ACC = {'ring': {'need': 10, 'title': '💍 Кольцо дружбы'}}

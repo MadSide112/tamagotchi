@@ -44,9 +44,43 @@
   }
   .who { flex: 1; min-width: 0; }
   .who .name {
+    display: flex; align-items: center;
     font-size: 16px; font-weight: 700; white-space: nowrap; overflow: hidden;
     text-overflow: ellipsis;
   }
+  .who .name span {
+    min-width: 0; overflow: hidden; text-overflow: ellipsis;
+  }
+  .rnbtn {
+    flex: 0 0 auto; border: 0; background: none; padding: 0 0 0 5px;
+    font-size: 12px; line-height: 1; cursor: pointer; opacity: .5;
+  }
+  .rnbtn:active { opacity: 1; }
+
+  /* --- rename modal --- */
+  #renameModal {
+    position: fixed; inset: 0; z-index: 70;
+    display: none; align-items: center; justify-content: center;
+    background: rgba(91, 74, 63, .4);
+  }
+  #renameModal.open { display: flex; }
+  .rnbox {
+    background: var(--panel); border-radius: var(--r);
+    padding: 16px; width: min(320px, 86vw); box-shadow: var(--shadow);
+  }
+  .rntitle { font-weight: 700; margin-bottom: 10px; }
+  .rninput {
+    width: 100%; box-sizing: border-box;
+    border: 2px solid var(--sky); border-radius: 12px;
+    padding: 10px 12px; font: inherit; color: var(--ink); background: #fff;
+  }
+  .rninput:focus { outline: none; border-color: var(--pink); }
+  .rnrow { display: flex; gap: 8px; margin-top: 12px; }
+  .rnrow button {
+    flex: 1; padding: 10px 0; border: 0; border-radius: 12px;
+    font: inherit; font-weight: 700; background: var(--cream); color: var(--ink);
+  }
+  .rnrow button.primary { background: var(--pink); color: #fff; }
   .xpwrap { margin-top: 4px; display: flex; align-items: center; gap: 6px; }
   .xpbar { flex: 1; height: 10px; border-radius: 6px; background: #EFE2D2; overflow: hidden; }
   .xpfill {
@@ -208,6 +242,7 @@
     background: var(--pink); color: #fff; width: 100%;
   }
   .copybtn:active { transform: scale(.97); }
+  .copybtn:disabled { opacity: .45; }
   .linkbox {
     background: var(--cream); border-radius: 12px; padding: 9px 12px;
     font-size: 12px; color: var(--ink-soft); word-break: break-all; margin-top: 6px;
@@ -256,20 +291,113 @@
   .strow .v { color: var(--ink-soft); text-align: right; }
   .invline { font-size: 13px; line-height: 1.9; font-weight: 700; }
 
+  /* --- mini-games list --- */
+  .gamerow {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--cream); border-radius: var(--r);
+    padding: 10px 12px; margin-bottom: 8px;
+  }
+  .gamerow:last-child { margin-bottom: 0; }
+  .gamerow .gico { font-size: 28px; flex: none; }
+  .gamerow .info { flex: 1; min-width: 0; }
+  .gamerow .gt { font-size: 14px; font-weight: 700; }
+  .gamerow .gd { font-size: 11px; color: var(--ink-soft); font-weight: 700; line-height: 1.4; }
+  .gchips { margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px; }
+  .chip {
+    background: #fff; border-radius: 999px; padding: 2px 8px;
+    font-size: 10.5px; font-weight: 700; color: var(--ink-soft);
+  }
+  .caps { margin-top: 8px; text-align: center; font-size: 11px;
+          color: var(--ink-soft); font-weight: 700; }
+
+  /* --- quests / achievements / fragments rows --- */
+  .qrow { padding: 8px 0; border-bottom: 1.5px dashed #F0E4D6; }
+  .qrow:last-child { border-bottom: none; }
+  .qrow .qt {
+    font-size: 13.5px; font-weight: 700;
+    display: flex; justify-content: space-between; gap: 8px;
+  }
+  .qrow .qr { color: var(--coral); white-space: nowrap; flex: none; }
+  .qbar { height: 10px; border-radius: 6px; background: #EFE2D2;
+          overflow: hidden; margin-top: 5px; }
+  .qfill { height: 100%; border-radius: 6px; width: 0;
+           background: linear-gradient(90deg, var(--mint), var(--sky));
+           transition: width .5s; }
+  .qfill.done { background: linear-gradient(90deg, var(--lemon), var(--coral)); }
+  .qfill.f-p  { background: var(--coral); }
+  .qfill.f-iq { background: var(--sky); }
+  .qfill.f-ch { background: var(--lemon); }
+  .qmeta { font-size: 10.5px; color: var(--ink-soft); font-weight: 700;
+           margin-top: 3px; line-height: 1.5; }
+
+  /* --- game overlay --- */
+  #gameOverlay {
+    position: fixed; inset: 0; z-index: 60;
+    display: none; flex-direction: column;
+    background: var(--cream);
+  }
+  #gameOverlay.open { display: flex; }
+  .ghud {
+    display: flex; align-items: center; gap: 8px;
+    padding: 12px 14px 6px; width: 100%; max-width: 430px; margin: 0 auto;
+  }
+  .gclose {
+    border: none; background: var(--panel); border-radius: 12px;
+    width: 36px; height: 36px; font-size: 15px; font-weight: 700;
+    cursor: pointer; box-shadow: var(--shadow);
+    font-family: inherit; color: var(--ink); flex: none;
+  }
+  .gtitle {
+    flex: 1; min-width: 0; font-size: 15px; font-weight: 700;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .gscorechip {
+    background: var(--panel); border-radius: 999px; padding: 5px 12px;
+    font-size: 13px; font-weight: 700; box-shadow: var(--shadow); flex: none;
+  }
+  .gtimechip {
+    background: var(--panel); border-radius: 999px; padding: 5px 10px;
+    font-size: 12px; font-weight: 700; color: var(--ink-soft);
+    box-shadow: var(--shadow); flex: none;
+  }
+  .gboard {
+    position: relative; flex: 1; margin: 6px 12px 4px;
+    border-radius: var(--r); background: #fff;
+    box-shadow: var(--shadow); overflow: hidden;
+  }
+  #gCanvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; }
+  .ghint {
+    text-align: center; font-size: 11px; color: var(--ink-soft); font-weight: 700;
+    padding: 8px 16px 20px;
+  }
+  .gresult {
+    position: absolute; inset: 0; z-index: 2;
+    background: rgba(253,243,231,.97);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 12px; padding: 24px; text-align: center;
+  }
+  .gresult[hidden] { display: none; }
+  .gresult .rtitle { font-size: 20px; font-weight: 700; }
+  .gresult .rmsg {
+    font-size: 13.5px; font-weight: 700; line-height: 1.7;
+    white-space: pre-line; max-width: 300px;
+  }
+  .gresult .copybtn { width: auto; padding: 10px 28px; margin-top: 0; }
+
   /* --- nav --- */
   nav {
     position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
     width: 100%; max-width: 430px;
     display: flex; background: var(--panel);
     border-top-left-radius: 20px; border-top-right-radius: 20px;
-    box-shadow: 0 -6px 20px rgba(91,74,63,.15); padding: 6px 4px 10px;
+    box-shadow: 0 -6px 20px rgba(91,74,63,.15); padding: 6px 2px 10px;
     z-index: 10;
   }
   .tab {
     flex: 1; border: none; background: none; font-family: inherit;
     display: flex; flex-direction: column; align-items: center; gap: 1px;
-    font-size: 10px; font-weight: 700; color: var(--ink-soft); cursor: pointer;
-    padding: 4px 0;
+    font-size: 9.5px; font-weight: 700; color: var(--ink-soft); cursor: pointer;
+    padding: 4px 0; min-width: 0;
   }
   .tab .tico { font-size: 19px; line-height: 1.2; }
   .tab.active { color: var(--coral); }
@@ -284,7 +412,7 @@
     position: fixed; left: 50%; bottom: 92px; transform: translateX(-50%);
     background: rgba(91,74,63,.92); color: #fff; border-radius: 12px;
     padding: 9px 16px; font-size: 12.5px; font-weight: 700;
-    opacity: 0; transition: opacity .3s; pointer-events: none; z-index: 20;
+    opacity: 0; transition: opacity .3s; pointer-events: none; z-index: 70;
     max-width: 86%; text-align: center;
   }
   .toast.show { opacity: 1; }
@@ -295,7 +423,7 @@
   <header>
     <img class="avatar" src="/assets/avatar.png" alt="">
     <div class="who">
-      <div class="name" id="petName">—</div>
+      <div class="name"><span id="petName">—</span><button class="rnbtn" id="btnRename" type="button" aria-label="Переименовать">✏️</button></div>
       <div class="xpwrap">
         <div class="xpbar"><div class="xpfill" id="xpFill"></div></div>
         <div class="lvl" id="lvlText">Lv 1</div>
@@ -303,6 +431,7 @@
     </div>
     <div class="pills">
       <div class="pill"><img src="/assets/coin.png" alt=""><span id="coinVal">0</span></div>
+      <div class="pill"><span style="font-size:14px">💎</span><span id="gemVal">0</span></div>
       <div class="pill" id="moodPill" title="Настроение"><img src="/assets/heart_full.png" alt=""><span id="moodVal">—</span></div>
     </div>
   </header>
@@ -355,6 +484,22 @@
       </div>
     </section>
 
+    <!-- GAMES -->
+    <section class="view" id="view-games">
+      <div class="card">
+        <h2>🎮 Мини-игры</h2>
+        <div class="muted">Один палец — одна кнопка. Время раунда меряет сервер: слишком быстрый результат не засчитается. За игру: монеты, XP и скрытые таланты.</div>
+        <div id="gameList" style="margin-top:10px"></div>
+        <div class="caps" id="mgCaps"></div>
+      </div>
+      <div class="card">
+        <h2>📋 Ежедневные квесты</h2>
+        <div id="questList"></div>
+        <button class="copybtn" id="questClaim" disabled>Забрать награду</button>
+        <div class="muted" style="margin-top:6px">Все три квеста за день — бонус <b>+25🪙</b>. Список обновляется раз в сутки.</div>
+      </div>
+    </section>
+
     <!-- SHOP -->
     <section class="view" id="view-shop">
       <div class="card">
@@ -362,8 +507,14 @@
         <div id="shopList"></div>
       </div>
       <div class="card">
+        <h2>🛋 Комната</h2>
+        <div class="muted">Апгрейды работают сами: миска делает еду сытнее, кровать копит монеты во сне, игровая зона усиливает мини-игры, денежное дерево капает монеты (копит максимум 12 часов).</div>
+        <div id="roomList"></div>
+        <button class="copybtn" id="treeBtn" hidden>🌳 Дерево копит монеты…</button>
+      </div>
+      <div class="card">
         <h2>🐾 Мои питомцы</h2>
-        <div class="muted">Новых выбивай в сундуках 📦 или получай по промокоду 🎟 (вкладка «Друзья»). Активный живёт в комнате.</div>
+        <div class="muted">Новых выбивай в сундуках 📦 (обычные и 💎 осколки) или получай по промокоду 🎟 (вкладка «Друзья»). Активный живёт в комнате.</div>
         <div class="petgrid" id="petGrid"></div>
       </div>
       <div class="card">
@@ -375,14 +526,32 @@
     <!-- CHESTS -->
     <section class="view" id="view-chests">
       <div class="card">
-        <h2>📦 Сундуки · <span id="chestsCoins">0</span>🪙</h2>
-        <div class="muted">Питомцы, монеты, еда и наряды. Что выпадет — решает сервер.</div>
+        <h2>📦 Сундуки · <span id="chestsCoins">0</span>🪙 · <span id="chestsGems">0</span>💎</h2>
+        <div class="muted">Питомцы, монеты, еда, наряды и осколки. Что выпадет — решает сервер.</div>
         <div id="chestsList" style="margin-top:10px"></div>
+      </div>
+      <div class="card">
+        <h2>🧩 Осколки питомцев</h2>
+        <div class="muted" id="fragsHint">Осколки 🧩 выпадают из 💎 Мифического сундука.</div>
+        <div id="fragsList" style="margin-top:6px"></div>
       </div>
     </section>
 
     <!-- FRIENDS -->
     <section class="view" id="view-friends">
+      <div class="card">
+        <h2>👣 Визиты к друзьям</h2>
+        <div class="muted">Введи ID питомца друга (число из его ref-кода: <b>ref_123</b> → ID <b>123</b>) — получишь очко дружбы, а другу прибавится сытости. Каждые 10 очков = <b>💍 кольцо дружбы</b>.</div>
+        <div class="promorow">
+          <input id="visitInput" placeholder="ID друга" maxlength="12" inputmode="numeric" autocomplete="off">
+          <button id="visitBtn">В гости</button>
+        </div>
+        <div class="qrow" style="margin-top:10px">
+          <div class="qt"><span>💍 Кольцо дружбы · очков: <span id="friendPts">0</span></span></div>
+          <div class="qbar"><div class="qfill" id="friendBar" style="width:0%"></div></div>
+          <div class="qmeta" id="friendLabel">0/10</div>
+        </div>
+      </div>
       <div class="card">
         <h2>🎁 Приглашай друзей</h2>
         <div class="muted">Твой реферальный код:</div>
@@ -393,7 +562,7 @@
       </div>
       <div class="card">
         <h2>🎟 Промокод</h2>
-        <div class="muted">Введи промокод — получишь монеты или нового питомца.</div>
+        <div class="muted">Введи промокод — получишь монеты, питомца или бустер XP. У временных кодов есть срок действия и лимит активаций.</div>
         <div class="promorow">
           <input id="promoInput" placeholder="КОД" maxlength="24" autocomplete="off">
           <button id="promoBtn">Активировать</button>
@@ -407,6 +576,45 @@
 
     <!-- STATS -->
     <section class="view" id="view-stats">
+      <div class="card">
+        <h2>📈 Прогресс</h2>
+        <div class="strow"><span>Уровень</span><span class="v" id="prLevel">—</span></div>
+        <div class="qbar" style="margin:4px 0 6px"><div class="qfill" id="prFill" style="width:0%"></div></div>
+        <div class="qmeta" id="prXp">—</div>
+        <div class="strow"><span>Поколение</span><span class="v" id="prGen">—</span></div>
+        <div class="strow"><span>Класс</span><span class="v" id="prClass">—</span></div>
+        <div class="qmeta" id="prClassDesc"></div>
+        <div class="qmeta" id="prBoost" hidden></div>
+      </div>
+      <div class="card">
+        <h2>🖋 Скрытые таланты</h2>
+        <div class="qrow">
+          <div class="qt"><span>💪 Сила → <b>Воин ⚔️</b></span><span class="qr" id="hValP">0/20</span></div>
+          <div class="qbar"><div class="qfill f-p" id="hFillP" style="width:0%"></div></div>
+          <div class="qmeta">+15% монет в мини-играх</div>
+        </div>
+        <div class="qrow">
+          <div class="qt"><span>🧠 Ум → <b>Маг 🔮</b></span><span class="qr" id="hValIq">0/20</span></div>
+          <div class="qbar"><div class="qfill f-iq" id="hFillIq" style="width:0%"></div></div>
+          <div class="qmeta">+20% опыта за любые действия</div>
+        </div>
+        <div class="qrow">
+          <div class="qt"><span>✨ Харизма → <b>Аристократ 👑</b></span><span class="qr" id="hValCh">0/20</span></div>
+          <div class="qbar"><div class="qfill f-ch" id="hFillCh" style="width:0%"></div></div>
+          <div class="qmeta">−25% к скорости голода</div>
+        </div>
+        <div class="muted" style="margin-top:8px">Таланты растут от мини-игр (💪/🧠) и заботы (✨). Кто сильнее к моменту взросления — тот класс и достанется.</div>
+      </div>
+      <div class="card">
+        <h2>🏅 Ачивки</h2>
+        <div id="achvList"></div>
+      </div>
+      <div class="card">
+        <h2>🏛 Зал Славы</h2>
+        <div id="hallList"></div>
+        <button class="copybtn" id="prestigeBtn" disabled>🏛 Зал Славы</button>
+        <div class="muted" style="margin-top:6px">Взрослый питомец <b>30 уровня</b> уходит в Зал Славу навсегда: коллекция, монеты, 💎 и комната остаются, приходит новое яйцо с <b>+10% XP</b> на все будущие поколения.</div>
+      </div>
       <div class="card">
         <h2>📊 Статистика</h2>
         <div class="strow"><span>Имя</span><span class="v" id="stName">—</span></div>
@@ -426,11 +634,44 @@
 
   <nav>
     <button class="tab active" onclick="showTab('home', this)"><span class="tico">🏠</span>Дом</button>
+    <button class="tab" onclick="showTab('games', this)"><span class="tico">🎮</span>Игры</button>
     <button class="tab" onclick="showTab('shop', this)"><span class="tico">🛒</span>Магазин</button>
     <button class="tab" onclick="showTab('chests', this)"><span class="tico">📦</span>Сундуки</button>
     <button class="tab" onclick="showTab('friends', this)"><span class="tico">🎁</span>Друзья</button>
     <button class="tab" onclick="showTab('stats', this)"><span class="tico">📊</span>Статы</button>
   </nav>
+
+  <!-- fullscreen game overlay -->
+  <div id="gameOverlay">
+    <div class="ghud">
+      <button class="gclose" id="gClose">✕</button>
+      <div class="gtitle" id="gTitle">—</div>
+      <div class="gscorechip" id="gScore">0</div>
+      <div class="gtimechip" id="gTime">—</div>
+    </div>
+    <div class="gboard">
+      <canvas id="gCanvas"></canvas>
+      <div class="gresult" id="gResult" hidden>
+        <div class="rtitle">🎉 Раунд завершён</div>
+        <div class="rmsg" id="gMsg"></div>
+        <button class="copybtn" id="gOkBtn">Отлично!</button>
+      </div>
+    </div>
+    <div class="ghint" id="gHint"></div>
+  </div>
+
+  <!-- rename modal -->
+  <div id="renameModal">
+    <div class="rnbox">
+      <div class="rntitle">Как зовут питомца?</div>
+      <input class="rninput" id="rnInput" maxlength="15" placeholder="до 15 символов" autocomplete="off">
+      <div class="rnrow">
+        <button id="rnCancel" type="button">Отмена</button>
+        <button id="rnSave" type="button" class="primary">Сохранить</button>
+      </div>
+    </div>
+  </div>
+
   <div class="toast" id="toast"></div>
 </div>
 
@@ -443,7 +684,6 @@ var BOT = '';
 var pet = null;
 
 var STAGE_NAMES = ['Яйцо 🥚', 'Малыш 🐣', 'Подросток 😼', 'Мудрец 🎓', 'Красавец ✨', 'Хулиган 😈'];
-var TEEN_DAYS = 3, ADULT_DAYS = 7;
 var CLEAN_CD = 300, PET_CD = 60, SCAV_CD = 180;
 var SHOP = [
   {id:'apple',   title:'🍎 Яблоко',    price:5,  kind:'food',      desc:'+25 сытости',                 ico:'apple.png'},
@@ -472,7 +712,35 @@ var CASES_META = [
    drops:['🪙 60–200 монет','🍰 2 торта','💊 2 лекарства','🧣 Шарф','🎩 Шляпа','👑 Корона',
           '🐹 Хомяк','🦊 Лисёнок','🦆 Утёнок','🐼 Панда']}
 ];
-var CHEST_ACC = { crown:'👑 Корона' };  // наряды только из сундуков
+var CHEST_ACC = { crown:'👑 Корона', ring:'💍 Кольцо дружбы' };  // наряды вне магазина
+
+/* --- справочники прогрессии 2.0 (подменяются meta из /api/state) --- */
+var META = {
+  energy_cost: 15,
+  max_level: 30,
+  species: SPECIES_META,
+  cases: CASES_META,
+  games: [
+    { id:'catch', title:'Ловилка 🧺',  desc:'Лови падающую еду корзиной', stat:'p',  score_cap:120 },
+    { id:'fish',  title:'Рыбалка 🎣',  desc:'Тапай, когда бегунок в зелёной зоне', stat:'p',  score_cap:5 },
+    { id:'simon', title:'Повторялка 🧠', desc:'Повтори последовательность подсказок', stat:'iq', score_cap:12 }
+  ],
+  room: [
+    { id:'bowl', title:'🥣 Миска',          desc:'еда даёт больше сытости',                    prices:[60,140,280] },
+    { id:'bed',  title:'🛏 Кровать',        desc:'сон приносит больше монет',                  prices:[80,180,340] },
+    { id:'zone', title:'🎾 Игровая зона',   desc:'+5% монет в мини-играх за каждый уровень',   prices:[90,200,360] },
+    { id:'tree', title:'🌳 Денежное дерево', desc:'копит монеты — периодически тряси (макс. 12ч)', prices:[250,500] }
+  ],
+  classes: [
+    { id:'warrior', title:'Воин ⚔️',      stat:'p',  desc:'+15% монет в мини-играх' },
+    { id:'mage',    title:'Маг 🔮',       stat:'iq', desc:'+20% опыта за любые действия' },
+    { id:'noble',   title:'Аристократ 👑', stat:'ch', desc:'−25% к скорости голода' }
+  ],
+  quests_pool: [],
+  achv: [],
+  friend: [{ id:'ring', title:'💍 Кольцо дружбы', need:10 }]
+};
+var ACHV_PROG = {};
 
 function $(id) { return document.getElementById(id); }
 function authed() { return !!INIT; }
@@ -498,6 +766,17 @@ function bubble(text, ms) {
   b.classList.add('show');
   clearTimeout(bubbleTimer);
   bubbleTimer = setTimeout(function() { b.classList.remove('show'); }, ms || 4200);
+}
+
+function hap(kind) {
+  if (!tg || !tg.HapticFeedback) return;
+  try {
+    if (kind === 'success' || kind === 'error' || kind === 'warning') {
+      tg.HapticFeedback.notificationOccurred(kind);
+    } else {
+      tg.HapticFeedback.impactOccurred(kind || 'light');
+    }
+  } catch (e) {}
 }
 
 function faceFor(p) {
@@ -530,20 +809,23 @@ function renderMood(mood) {
   $('moodVal').textContent = mood + '%';
 }
 
+/* реальный уровень с сервера: p.level / p.xp / p.xp_need */
 function xpInfo(p) {
-  var now = Math.floor(Date.now() / 1000);
-  var age = Math.max(0, now - p.born);
-  if (p.stage === 0) return { pct: 0, label: 'Lv 🥚' };
-  if (p.stage === 1) return { pct: Math.min(100, age / (TEEN_DAYS * 86400) * 100), label: 'Lv 1' };
-  if (p.stage === 2) return { pct: Math.min(100, age / (ADULT_DAYS * 86400) * 100), label: 'Lv 2' };
-  return { pct: 100, label: 'Lv MAX' };
+  var maxL = META.max_level || 30;
+  if (p.stage === 0) return { pct: 0, label: 'Lv ' + (p.level || 0) };
+  var pct = (p.level >= maxL) ? 100
+    : Math.min(100, Math.round((p.xp || 0) / (p.xp_need || 1) * 100));
+  return { pct: pct, label: 'Lv ' + p.level + (p.level >= maxL ? ' · MAX' : '') };
 }
 
 function render(p) {
   pet = p;
   $('petName').textContent = p.name;
   $('coinVal').textContent = p.coins;
+  $('gemVal').textContent = p.gems || 0;
   $('shopCoins').textContent = p.coins;
+  $('chestsCoins').textContent = p.coins;
+  $('chestsGems').textContent = p.gems || 0;
   renderMood(p.mood);
 
   var xp = xpInfo(p);
@@ -598,12 +880,18 @@ function render(p) {
     ? (hasMed ? '💊 есть — лечи!' : 'купи 💊 в магазине')
     : 'здоров 😊';
 
-  $('chestsCoins').textContent = p.coins;
   renderShop();
   renderPets();
   renderChests();
   renderInv();
   renderStats();
+  renderGames(p);
+  renderQuests(p);
+  renderRoom(p);
+  renderFrags(p);
+  renderVisit(p);
+  renderProgress(p);
+  renderAchv(p);
 }
 
 function renderShop() {
@@ -632,7 +920,7 @@ function renderShop() {
     row.appendChild(btn);
     list.appendChild(row);
   });
-  // наряды из сундуков, которых нет в магазине (например, корона)
+  // наряды из сундуков/визитов, которых нет в магазине (корона, кольцо дружбы)
   if (pet) {
     pet.acc.forEach(function(id) {
       if (!CHEST_ACC[id] || SHOP.some(function(x) { return x.id === id; })) return;
@@ -640,7 +928,7 @@ function renderShop() {
       row.className = 'shoprow';
       var worn = pet.worn === id;
       row.innerHTML =
-        '<div class="sico">👑</div>' +
+        '<div class="sico">' + (id === 'ring' ? '💍' : '👑') + '</div>' +
         '<div class="info"><div class="t">' + CHEST_ACC[id] + '</div>' +
         '<div class="d">наряд из сундука · куплено</div></div>';
       var btn = document.createElement('button');
@@ -686,7 +974,8 @@ function renderPets() {
     } else {
       var lock = document.createElement('div');
       lock.className = 'lock';
-      lock.textContent = '🔒 из сундука';
+      lock.textContent = sp.id === 'fox' || sp.id === 'panda' || sp.id === 'snow_leopard'
+        ? '🧩 осколки' : '🔒 из сундука';
       card.appendChild(lock);
     }
     grid.appendChild(card);
@@ -696,7 +985,7 @@ function renderPets() {
 function renderChests() {
   var wrap = $('chestsList');
   wrap.innerHTML = '';
-  CASES_META.forEach(function(c) {
+  META.cases.forEach(function(c) {
     var box = document.createElement('div');
     box.className = 'card';
     box.style.padding = '12px';
@@ -707,8 +996,9 @@ function renderChests() {
       '<div class="cd">' + c.desc + '</div></div>';
     var btn = document.createElement('button');
     btn.className = 'buy';
-    btn.textContent = c.price + '🪙';
-    btn.disabled = !pet || pet.coins < c.price;
+    var gems = c.currency === 'gems';
+    btn.textContent = c.price + (gems ? '💎' : '🪙');
+    btn.disabled = !pet || (gems ? (pet.gems || 0) < c.price : pet.coins < c.price);
     btn.onclick = function() { doAction('open_case', c.id); };
     head.appendChild(btn);
     box.appendChild(head);
@@ -781,10 +1071,12 @@ function doAction(action, arg) {
     if (handleAuthOrMissing(res)) return;
     return res.json().then(function(data) {
       if (data.state) render(data.state);
-      if (data.message) { bubble(data.message); if (arg) toast(data.message); }
-      if (tg && tg.HapticFeedback && data.state) {
-        try { tg.HapticFeedback.impactOccurred('light'); } catch (e) {}
+      if (data.message) {
+        bubble(data.message);
+        // вне домашнего экрана пузырь не виден — дублируем тостом
+        if (arg || !$('view-home').classList.contains('active')) toast(data.message);
       }
+      if (data.state) hap('light');
     });
   }).catch(function() {
     toast('Нет связи 😿 попробуй ещё раз');
@@ -867,6 +1159,631 @@ function submitPromo() {
   input.value = '';
 }
 
+/* ==================== РЕНЕЙМ ==================== */
+var NAME_MAX = 15;
+
+function openRename() {
+  if (!pet) return;
+  $('rnInput').value = pet.name || '';
+  $('renameModal').classList.add('open');
+  setTimeout(function() { $('rnInput').focus(); $('rnInput').select(); }, 50);
+}
+
+function closeRename() {
+  $('renameModal').classList.remove('open');
+}
+
+function submitRename() {
+  var name = ($('rnInput').value || '').trim().replace(/\s+/g, ' ');
+  if (!name) { toast('Имя не может быть пустым 🙃'); return; }
+  if (name.length > NAME_MAX) { toast('Имя длиннее ' + NAME_MAX + ' символов 🤏'); return; }
+  closeRename();
+  if (pet && name === pet.name) return;
+  doAction('rename', name);
+}
+
+/* ==================== МИНИ-ИГРЫ ====================
+   Протокол: game_start (сервер ставит cooldown gs_<id>) → раунд →
+   game_end '<id>:<score>:<dur>'. Сервер сам меряет время по gs_<id>:
+   короче MG_MIN_SEC — отказ. Клиент держит раунд чуть дольше минимума. */
+var MG_MIN_SEC = 15;
+var MG_FLOOR = MG_MIN_SEC + 1.5;                    // клиентский нижний порог длительности
+var MG_ROUND = { catch: 32, fish: 34, simon: 110 }; // длительности раундов, сек
+var HINTS = {
+  catch: 'Води пальцем — лови еду корзиной. Каждая поимка +1 очко',
+  fish:  'Тапни по экрану, когда бегунок внутри зелёной зоны',
+  simon: 'Запомни последовательность и повтори её тапами'
+};
+var STAT_TITLES = { p: '💪 сила', iq: '🧠 ум', ch: '✨ харизма' };
+var GAME_ICO = { catch: '🧺', fish: '🎣', simon: '🧠' };
+var G = null;  // активная сессия мини-игры
+
+function gameMeta(id) {
+  return (META.games || []).filter(function(g) { return g.id === id; })[0] || null;
+}
+
+function startGame(g) {
+  if (!pet || G) return;
+  if (pet.stage === 0) { toast('Сначала вылупись из яйца 🥚'); return; }
+  if (pet.sleeping) { toast('Питомец спит 😴'); return; }
+  if (pet.energy < (META.energy_cost || 15)) { toast('Мало энергии ⚡ поиграй позже'); return; }
+  apiAction('game_start', g.id).then(function(res) {
+    if (handleAuthOrMissing(res)) return;
+    return res.json().then(function(data) {
+      var st = data.state;
+      if (st) render(st);
+      var ok = st && st.cooldowns && st.cooldowns['gs_' + g.id];
+      if (!ok) { if (data.message) toast(data.message); return; }
+      openGame(g);
+    });
+  }).catch(function() { toast('Нет связи 😿'); });
+}
+
+function fitCanvas(c) {
+  var dpr = window.devicePixelRatio || 1;
+  var r = c.parentNode.getBoundingClientRect();
+  c._w = Math.max(200, Math.round(r.width));
+  c._h = Math.max(200, Math.round(r.height));
+  c.width = Math.round(c._w * dpr);
+  c.height = Math.round(c._h * dpr);
+  c.getContext('2d').setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+function openGame(g) {
+  $('gameOverlay').classList.add('open');
+  $('gTitle').textContent = g.title;
+  $('gHint').textContent = HINTS[g.id] || '';
+  $('gScore').textContent = '0';
+  $('gTime').textContent = '—';
+  $('gResult').hidden = true;
+  var c = $('gCanvas');
+  fitCanvas(c);
+  G = { id: g.id, meta: g, score: 0, t0: Date.now(), last: Date.now(),
+        raf: 0, done: false, w: c._w, h: c._h, ctx: c.getContext('2d') };
+  STARTS[g.id]();
+  G.raf = requestAnimationFrame(gLoop);
+  hap('medium');
+}
+
+function gLoop() {
+  if (!G || G.done) return;
+  var now = Date.now();
+  var t = (now - G.t0) / 1000;
+  var dt = Math.min(0.06, (now - G.last) / 1000);
+  G.last = now;
+  var round = MG_ROUND[G.id] || 30;
+  if (t >= round) { finishGame(); return; }
+  TICKS[G.id](t, dt);
+  DRAWS[G.id](t);
+  $('gScore').textContent = G.score;
+  $('gTime').textContent = G.id === 'simon'
+    ? ('⏱ ' + Math.floor(t) + 'с · раунд ' + (G.seq ? G.seq.length : 1))
+    : ('⏱ ' + Math.max(0, Math.ceil(round - t)) + 'с');
+  G.raf = requestAnimationFrame(gLoop);
+}
+
+function finishGame() {
+  if (!G || G.done) return;
+  G.done = true;
+  cancelAnimationFrame(G.raf);
+  var g = G;
+  var elapsed = (Date.now() - g.t0) / 1000;
+  var wait = Math.max(0, MG_FLOOR - elapsed);
+  setTimeout(function() { submitGame(g); }, Math.round(wait * 1000) + 120);
+}
+
+function submitGame(g) {
+  var dur = Math.round((Date.now() - g.t0) / 1000);
+  apiAction('game_end', g.id + ':' + g.score + ':' + dur).then(function(res) {
+    if (handleAuthOrMissing(res)) { closeGame(true); return; }
+    return res.json().then(function(data) {
+      if (data.state) render(data.state);
+      $('gMsg').textContent = data.message || 'Результат не засчитан 🤔';
+      $('gResult').hidden = false;
+      hap('success');
+    });
+  }).catch(function() {
+    $('gMsg').textContent = 'Нет связи 😿 результат не засчитан';
+    $('gResult').hidden = false;
+  });
+}
+
+function closeGame(force) {
+  if (G && !G.done && !force) { finishGame(); return; }  // ранний выход — сдаём текущий счёт
+  if (G) cancelAnimationFrame(G.raf);
+  G = null;
+  $('gameOverlay').classList.remove('open');
+  if (pet) renderGames(pet);
+}
+
+function rr(c, x, y, w, h, r) {
+  c.beginPath();
+  c.moveTo(x + r, y);
+  c.arcTo(x + w, y, x + w, y + h, r);
+  c.arcTo(x + w, y + h, x, y + h, r);
+  c.arcTo(x, y + h, x, y, r);
+  c.arcTo(x, y, x + w, y, r);
+  c.closePath();
+}
+
+/* --- Ловилка: корзина следует за пальцем, еда падает сверху --- */
+function startCatch() {
+  G.bx = G.w / 2;
+  G.bw = Math.min(96, Math.max(64, G.w * 0.24));
+  G.items = [];
+  G.spawnIn = 0.4;
+}
+function tickCatch(t, dt) {
+  G.spawnIn -= dt;
+  if (G.spawnIn <= 0) {
+    G.spawnIn = Math.max(0.34, 0.72 - G.score * 0.012);
+    var kinds = ['🍎', '🐟', '🍰', '🥕', '🍓'];
+    G.items.push({
+      x: 24 + Math.random() * (G.w - 48),
+      y: -24,
+      v: Math.min(280, 120 + G.score * 5 + Math.random() * 50),
+      e: kinds[Math.floor(Math.random() * kinds.length)]
+    });
+  }
+  var catchY = G.h - 56;
+  for (var i = G.items.length - 1; i >= 0; i--) {
+    var it = G.items[i];
+    it.y += it.v * dt;
+    if (it.y > catchY - 6 && it.y < catchY + 28 && Math.abs(it.x - G.bx) < G.bw / 2 + 12) {
+      G.items.splice(i, 1);
+      G.score = Math.min(G.meta.score_cap, G.score + 1);
+      hap('light');
+    } else if (it.y > G.h + 30) {
+      G.items.splice(i, 1);
+    }
+  }
+}
+function drawCatch() {
+  var c = G.ctx;
+  c.clearRect(0, 0, G.w, G.h);
+  c.fillStyle = '#FFF6E8'; c.fillRect(0, 0, G.w, G.h);
+  c.fillStyle = '#CDEFC9'; c.fillRect(0, G.h - 46, G.w, 46);
+  c.font = '30px serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+  G.items.forEach(function(it) { c.fillText(it.e, it.x, it.y); });
+  var by = G.h - 64;
+  c.fillStyle = '#D99E6A';
+  rr(c, G.bx - G.bw / 2, by, G.bw, 34, 9); c.fill();
+  c.fillStyle = '#B97F4B';
+  rr(c, G.bx - G.bw / 2, by, G.bw, 11, 6); c.fill();
+  c.textBaseline = 'alphabetic';
+}
+function tapCatch(x) {
+  if (!G) return;
+  G.bx = Math.max(G.bw / 2, Math.min(G.w - G.bw / 2, x));
+}
+
+/* --- Рыбалка: бегунок ходит по треку, тап в зелёной зоне = улов --- */
+function startFish() {
+  G.mx = 0.5; G.dir = 1;
+  G.flashMsg = ''; G.flashT = 0;
+  newFishZone();
+}
+function newFishZone() {
+  var sc = G.score;
+  G.speed = Math.min(2.1, 0.85 + sc * 0.22);
+  G.zw = Math.max(0.10, 0.26 - sc * 0.026);
+  G.zx = 0.06 + Math.random() * (0.94 - G.zw);
+}
+function tickFish(t, dt) {
+  G.mx += G.dir * G.speed * dt;
+  if (G.mx >= 0.98) { G.mx = 0.98; G.dir = -1; }
+  if (G.mx <= 0.02) { G.mx = 0.02; G.dir = 1; }
+  G.flashT -= dt;
+  if (G.flashT <= 0) G.flashMsg = '';
+}
+function tapFish() {
+  if (!G || G.done) return;
+  var hit = G.mx >= G.zx && G.mx <= G.zx + G.zw;
+  if (hit) {
+    G.score = Math.min(G.meta.score_cap, G.score + 1);
+    G.flashMsg = '+1 🎣';
+    hap('success');
+    if (G.score >= G.meta.score_cap) { finishGame(); return; }
+  } else {
+    G.flashMsg = 'мимо 💦';
+    hap('light');
+  }
+  newFishZone();
+  G.flashT = 0.8;
+}
+function drawFish() {
+  var c = G.ctx;
+  c.clearRect(0, 0, G.w, G.h);
+  c.fillStyle = '#D6ECFA'; c.fillRect(0, 0, G.w, G.h);
+  c.fillStyle = 'rgba(255,255,255,.55)';
+  for (var i = 0; i < 8; i++) {
+    var bx = (i * 97 + 40) % G.w, by = (i * 211 + 70) % (G.h - 80);
+    c.beginPath(); c.arc(bx, by, 5 + (i % 3) * 3, 0, 7); c.fill();
+  }
+  c.font = '34px serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+  var fx = G.w / 2 + Math.sin(Date.now() / 600) * 18;
+  c.fillText('🐟', fx, G.h - 34);
+  var tx = 14, tw = G.w - 28, ty = Math.round(G.h * 0.40), th = 30;
+  c.fillStyle = '#F1E5D2';
+  rr(c, tx, ty, tw, th, 15); c.fill();
+  c.fillStyle = '#7ED49A';
+  rr(c, tx + G.zx * tw, ty, G.zw * tw, th, 12); c.fill();
+  var mx = tx + G.mx * tw;
+  c.fillStyle = '#5B4A3F';
+  c.beginPath(); c.arc(mx, ty + th / 2, 11, 0, 7); c.fill();
+  c.fillStyle = '#FF9AA8';
+  c.beginPath(); c.arc(mx, ty + th / 2, 6, 0, 7); c.fill();
+  if (G.flashMsg) {
+    c.fillStyle = '#5B4A3F'; c.font = '700 22px sans-serif';
+    c.fillText(G.flashMsg, G.w / 2, ty - 24);
+  }
+  c.textBaseline = 'alphabetic';
+}
+
+/* --- Повторялка: 2×2 пады, серверная наука — последовательность --- */
+var SIMON_PADS = [
+  { base: '#FFB5C2', hot: '#FF8FA0', e: '🍓' },
+  { base: '#B5E8D5', hot: '#7FD8B8', e: '🥝' },
+  { base: '#B5D8F0', hot: '#86C2E8', e: '🫐' },
+  { base: '#FFE3A3', hot: '#FFD166', e: '🍋' }
+];
+function startSimon() {
+  G.seq = []; G.phase = 'gap'; G.step = -1;
+  G.flash = -1; G.flashT = 0.45; G.idx = 0;
+}
+function simonPadRect(i) {
+  var pw = (G.w - 36) / 2, ph = (G.h - 46) / 2;
+  return { x: 10 + (i % 2) * (pw + 8), y: 10 + Math.floor(i / 2) * (ph + 8), w: pw, h: ph };
+}
+function tickSimon(t, dt) {
+  G.flashT -= dt;
+  if (G.phase === 'gap') {
+    if (G.flashT <= 0) {
+      G.seq.push(Math.floor(Math.random() * 4));
+      G.phase = 'show'; G.step = -1; G.flash = -1; G.flashT = 0.12;
+    }
+  } else if (G.phase === 'show') {
+    if (G.flashT <= 0) {
+      if (G.flash >= 0) { G.flash = -1; G.flashT = 0.16; }
+      else {
+        G.step++;
+        if (G.step >= G.seq.length) { G.phase = 'input'; G.idx = 0; }
+        else {
+          G.flash = G.seq[G.step];
+          G.flashT = Math.max(0.3, 0.52 - G.seq.length * 0.015);
+          hap('light');
+        }
+      }
+    }
+  } else if (G.phase === 'pad') {
+    if (G.flashT <= 0) { G.flash = -1; G.phase = 'input'; }
+  } else if (G.phase === 'next') {
+    if (G.flashT <= 0) {
+      if (G.score >= G.meta.score_cap || t > MG_ROUND.simon - 8) finishGame();
+      else { G.phase = 'gap'; G.flashT = 0.55; }
+    }
+  }
+}
+function tapSimon(x, y) {
+  if (!G || G.done || G.phase !== 'input') return;
+  var hit = -1;
+  for (var i = 0; i < 4; i++) {
+    var r = simonPadRect(i);
+    if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) { hit = i; break; }
+  }
+  if (hit < 0) return;
+  if (hit === G.seq[G.idx]) {
+    G.idx++;
+    G.flash = hit; G.flashT = 0.22; G.phase = 'pad';
+    hap('light');
+    if (G.idx >= G.seq.length) {
+      G.score = G.seq.length;
+      G.phase = 'next'; G.flashT = 0.5;
+      hap('success');
+    }
+  } else {
+    hap('error');
+    finishGame();
+  }
+}
+function drawSimon() {
+  var c = G.ctx;
+  c.clearRect(0, 0, G.w, G.h);
+  c.fillStyle = '#FBF0E2'; c.fillRect(0, 0, G.w, G.h);
+  for (var i = 0; i < 4; i++) {
+    var r = simonPadRect(i);
+    var pad = SIMON_PADS[i];
+    c.fillStyle = (G.flash === i) ? pad.hot : pad.base;
+    rr(c, r.x, r.y, r.w, r.h, 18); c.fill();
+    c.font = Math.floor(Math.min(r.w, r.h) * 0.42) + 'px serif';
+    c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillText(pad.e, r.x + r.w / 2, r.y + r.h / 2);
+  }
+  c.fillStyle = '#9B8A7D'; c.font = '700 13px sans-serif'; c.textBaseline = 'alphabetic';
+  var msg = G.phase === 'show' ? 'смотри 👀'
+    : G.phase === 'input' ? ('повтори · ' + G.idx + '/' + G.seq.length)
+    : G.phase === 'next' ? 'верно! раунд +1'
+    : 'приготовься…';
+  c.fillText(msg, G.w / 2, G.h - 8);
+}
+
+var STARTS = { catch: startCatch, fish: startFish, simon: startSimon };
+var TICKS  = { catch: tickCatch, fish: tickFish, simon: tickSimon };
+var DRAWS  = { catch: drawCatch, fish: drawFish, simon: drawSimon };
+
+(function initGameInput() {
+  var c = $('gCanvas');
+  function pt(e) {
+    var r = c.getBoundingClientRect();
+    var s = (e.touches && e.touches[0]) ? e.touches[0] : e;
+    return { x: s.clientX - r.left, y: s.clientY - r.top };
+  }
+  function onMove(e) {
+    if (!G || G.done || G.id !== 'catch') return;
+    e.preventDefault();
+    tapCatch(pt(e).x);
+  }
+  function onTap(e) {
+    if (!G || G.done) return;
+    e.preventDefault();
+    var p = pt(e);
+    if (G.id === 'catch') tapCatch(p.x);
+    else if (G.id === 'fish') tapFish();
+    else if (G.id === 'simon') tapSimon(p.x, p.y);
+  }
+  c.addEventListener('touchstart', onTap, { passive: false });
+  c.addEventListener('touchmove', onMove, { passive: false });
+  c.addEventListener('mousedown', onTap);
+  c.addEventListener('mousemove', function(e) { if (e.buttons) onMove(e); });
+  window.addEventListener('resize', function() {
+    if (G && !G.done) {
+      fitCanvas(c);
+      G.w = c._w; G.h = c._h;
+    }
+  });
+  $('gClose').onclick = function() { closeGame(false); };
+  $('gOkBtn').onclick = function() { closeGame(true); };
+})();
+
+/* ==================== КАРТОЧКИ ПРОГРЕССИИ ==================== */
+
+function renderGames(p) {
+  var box = $('gameList');
+  box.innerHTML = '';
+  var cost = META.energy_cost || 15;
+  (META.games || []).forEach(function(g) {
+    var row = document.createElement('div');
+    row.className = 'gamerow';
+    row.innerHTML =
+      '<div class="gico">' + (GAME_ICO[g.id] || '🎮') + '</div>' +
+      '<div class="info"><div class="gt">' + g.title + '</div>' +
+      '<div class="gd">' + g.desc + '</div>' +
+      '<div class="gchips"><span class="chip">' + (STAT_TITLES[g.stat] || g.stat) + '</span>' +
+      '<span class="chip">кап ' + g.score_cap + '</span>' +
+      '<span class="chip">−' + cost + '⚡</span></div></div>';
+    var btn = document.createElement('button');
+    btn.className = 'buy';
+    btn.textContent = 'Играть';
+    btn.disabled = p.stage === 0 || p.sleeping || p.energy < cost || !!G;
+    btn.onclick = function() { startGame(g); };
+    row.appendChild(btn);
+    box.appendChild(row);
+  });
+  var cd = p.cooldowns || {};
+  $('mgCaps').textContent = 'Сегодня: ' + (p.mg_coins || 0) + '/250🪙 · ' +
+    (p.mg_games || 0) + '/40 игр · ' + (cd.gcnt || 0) + '/5💎 · раундов всего: ' +
+    (p.games_total || 0);
+}
+
+function questMeta(id) {
+  return (META.quests_pool || []).filter(function(q) { return q.id === id; })[0] ||
+    { id: id, title: id, reward: 0 };
+}
+
+function renderQuests(p) {
+  var box = $('questList');
+  box.innerHTML = '';
+  var qs = p.quests || [];
+  var total = 0, all = qs.length > 0;
+  qs.forEach(function(q) {
+    var m = questMeta(q[0]);
+    var done = q[2] >= q[1];
+    if (!done) all = false;
+    total += m.reward || 0;
+    var row = document.createElement('div');
+    row.className = 'qrow';
+    row.innerHTML =
+      '<div class="qt"><span>' + (done ? '✅ ' : '◻️ ') + m.title + '</span>' +
+      '<span class="qr">+' + m.reward + '🪙</span></div>' +
+      '<div class="qbar"><div class="qfill' + (done ? ' done' : '') + '" style="width:' +
+      Math.min(100, Math.round(q[2] / q[1] * 100)) + '%"></div></div>' +
+      '<div class="qmeta">' + Math.min(q[2], q[1]) + ' из ' + q[1] + '</div>';
+    box.appendChild(row);
+  });
+  if (!qs.length) box.innerHTML = '<div class="muted">Квесты появятся чуть позже 🌙</div>';
+  var btn = $('questClaim');
+  btn.disabled = !all || !!p.q_claimed;
+  btn.textContent = p.q_claimed ? 'Награда за день получена ✅'
+    : all ? ('Забрать ' + (total + 25) + '🪙 · все 3 + бонус')
+    : 'Все 3 квеста = бонус +25🪙';
+}
+
+var ROOM_ICO = { bowl: '🥣', bed: '🛏', zone: '🎾', tree: '🌳' };
+
+function renderRoom(p) {
+  var box = $('roomList');
+  box.innerHTML = '';
+  var room = p.room || {};
+  (META.room || []).forEach(function(r) {
+    var lvl = room[r.id] || 0;
+    var maxed = lvl >= (r.prices || []).length;
+    var row = document.createElement('div');
+    row.className = 'shoprow';
+    row.innerHTML =
+      '<div class="sico">' + (ROOM_ICO[r.id] || '🪴') + '</div>' +
+      '<div class="info"><div class="t">' + r.title + ' · ур. ' + lvl + '</div>' +
+      '<div class="d">' + r.desc + '</div></div>';
+    var btn = document.createElement('button');
+    btn.className = 'buy';
+    if (maxed) {
+      btn.textContent = 'MAX';
+      btn.disabled = true;
+    } else {
+      var price = r.prices[lvl];
+      btn.textContent = price + '🪙';
+      btn.disabled = p.coins < price;
+      btn.onclick = function() { doAction('buy', r.id); };
+    }
+    row.appendChild(btn);
+    box.appendChild(row);
+  });
+  var pend = Math.round(p.tree_pending || 0);
+  var tb = $('treeBtn');
+  tb.hidden = !(room.tree > 0);
+  tb.disabled = pend < 1;
+  tb.textContent = pend >= 1 ? ('🌳 Трясти дерево · +' + pend + '🪙')
+                             : '🌳 Дерево копит монеты…';
+}
+
+var FRAG_NEED = { fox: 5, panda: 8, snow_leopard: 12 };  // только отображение, решение — сервер
+
+function renderFrags(p) {
+  var box = $('fragsList');
+  box.innerHTML = '';
+  var frags = p.frags || {};
+  var any = false;
+  Object.keys(FRAG_NEED).forEach(function(id) {
+    var have = frags[id] || 0;
+    var owned = (p.pets || []).indexOf(id) >= 0;
+    if (have > 0 && !owned) any = true;
+    var sm = speciesMeta(id);
+    var row = document.createElement('div');
+    row.className = 'qrow';
+    row.innerHTML =
+      '<div class="qt"><span>' + sm.title + '</span>' +
+      '<span class="qr">' + (owned ? '✅ в коллекции' : have + '/' + FRAG_NEED[id] + ' 🧩') + '</span></div>' +
+      '<div class="qbar"><div class="qfill' + (owned ? ' done' : '') + '" style="width:' +
+      (owned ? 100 : Math.min(100, Math.round(have / FRAG_NEED[id] * 100))) + '%"></div></div>';
+    box.appendChild(row);
+  });
+  $('fragsHint').textContent = any
+    ? 'Собери все осколки вида — питомец сам присоединится к коллекции!'
+    : 'Осколки 🧩 выпадают из 💎 Мифического сундука. Повторные питомцы превращаются в 150🪙.';
+}
+
+function renderVisit(p) {
+  var fr = (META.friend || [])[0] || { need: 10, title: '💍 Кольцо дружбы' };
+  var pts = p.friend_pts || 0;
+  var owned = (p.acc || []).indexOf('ring') >= 0;
+  $('friendPts').textContent = pts;
+  $('friendBar').style.width = (owned ? 100
+    : Math.min(100, Math.round(pts / fr.need * 100))) + '%';
+  $('friendLabel').textContent = owned ? 'Кольцо получено — надень его в магазине! ✅'
+    : (pts + '/' + fr.need + ' очков дружбы → ' + fr.title);
+}
+
+function renderProgress(p) {
+  var maxL = META.max_level || 30;
+  $('prLevel').textContent = 'Уровень ' + p.level + ' из ' + maxL;
+  $('prFill').style.width = (p.level >= maxL ? 100
+    : Math.min(100, Math.round((p.xp || 0) / (p.xp_need || 1) * 100))) + '%';
+  $('prXp').textContent = p.level >= maxL
+    ? 'XP максимален — пора в Зал Славы 🏛'
+    : ((p.xp || 0) + ' / ' + (p.xp_need || 1) + ' XP до уровня ' + (p.level + 1));
+  $('prGen').textContent = 'Поколение ' + p.gen +
+    (p.gen > 1 ? ' · +' + ((p.gen - 1) * 10) + '% XP навсегда' : ' · первое');
+  var cls = (META.classes || []).filter(function(x) { return x.id === p.cls; })[0];
+  $('prClass').textContent = cls ? cls.title : 'пока без класса';
+  $('prClassDesc').textContent = cls ? cls.desc
+    : ('Прокачай 💪/🧠/✨ до ' + 20 + ' — класс определится, когда питомец вырастет');
+  var nowS = Math.floor(Date.now() / 1000);
+  var boostEl = $('prBoost');
+  if (p.boost_until && p.boost_until > nowS) {
+    boostEl.hidden = false;
+    boostEl.textContent = '🎁 Бустер XP активен · ещё ' +
+      Math.ceil((p.boost_until - nowS) / 60) + ' мин';
+  } else {
+    boostEl.hidden = true;
+  }
+
+  [['p', 'hFillP', 'hValP'], ['iq', 'hFillIq', 'hValIq'], ['ch', 'hFillCh', 'hValCh']]
+    .forEach(function(r) {
+      var val = p[r[0]] || 0;
+      $(r[1]).style.width = Math.min(100, Math.round(val / 20 * 100)) + '%';
+      $(r[2]).textContent = val + '/20';
+    });
+
+  var box = $('hallList');
+  box.innerHTML = '';
+  var hall = p.hall || [];
+  if (!hall.length) {
+    box.innerHTML = '<div class="muted">Пока пусто. Взрослый питомец 30 уровня станет первой легендой 🏛</div>';
+  } else {
+    hall.slice().reverse().forEach(function(h) {
+      var sm = speciesMeta(h[0]);
+      var hc = (META.classes || []).filter(function(x) { return x.id === h[1]; })[0];
+      var row = document.createElement('div');
+      row.className = 'strow';
+      row.innerHTML = '<span>' + sm.title + (hc ? ' · ' + hc.title : '') + '</span>' +
+        '<span class="v">поколение ' + h[2] + '</span>';
+      box.appendChild(row);
+    });
+  }
+  var btn = $('prestigeBtn');
+  var ready = p.stage >= 3 && p.level >= maxL;
+  btn.disabled = !ready;
+  btn.textContent = ready ? '🏛 Отправить в Зал Славы · новое яйцо +10% XP'
+    : (p.stage < 3 ? 'Нужен взрослый питомец'
+                   : ('Нужен ' + maxL + '-й уровень (сейчас ' + p.level + ')'));
+}
+
+function renderAchv(p) {
+  var box = $('achvList');
+  box.innerHTML = '';
+  var got = p.achv || [];
+  (META.achv || []).forEach(function(a) {
+    var done = got.indexOf(a.id) >= 0;
+    var pr = ACHV_PROG[a.id] || [0, 1];
+    var pct = done ? 100 : Math.min(100, Math.round((pr[0] || 0) / (pr[1] || 1) * 100));
+    var row = document.createElement('div');
+    row.className = 'qrow';
+    row.innerHTML =
+      '<div class="qt"><span>' + (done ? '🏅 ' : '🔒 ') + a.title +
+      (a.title_reward ? ' · <b>' + a.title_reward + '</b>' : '') + '</span>' +
+      '<span class="qr">+' + a.gems + '💎</span></div>' +
+      '<div class="qbar"><div class="qfill' + (done ? ' done' : '') + '" style="width:' +
+      pct + '%"></div></div>' +
+      '<div class="qmeta">' + (done ? 'получено' : (Math.min(pr[0], pr[1]) + '/' + pr[1])) +
+      ' · ' + a.desc + '</div>';
+    box.appendChild(row);
+  });
+}
+
+function submitVisit() {
+  var input = $('visitInput');
+  var v = (input.value || '').trim();
+  if (!/^\d{3,}$/.test(v)) { toast('ID друга — число из его ref-кода (ref_123 → 123)'); return; }
+  doAction('visit', v);
+  input.value = '';
+}
+
+function initProgress() {
+  $('questClaim').onclick = function() { doAction('quest_claim'); };
+  $('treeBtn').onclick = function() { doAction('collect_tree'); };
+  $('visitBtn').onclick = submitVisit;
+  $('visitInput').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') submitVisit();
+  });
+  $('prestigeBtn').onclick = function() {
+    var go = function() { doAction('prestige'); };
+    if (tg && tg.showConfirm) {
+      tg.showConfirm('Отправить питомца в Зал Славы? Он уйдёт навсегда, а ты получишь новое яйцо и +10% XP.', function(ok) { if (ok) go(); });
+    } else {
+      go();
+    }
+  };
+}
+
 function boot() {
   if (tg) {
     try { tg.ready(); tg.expand(); } catch (e) {}
@@ -884,14 +1801,42 @@ function boot() {
     if (!data) return;
     BOT = data.bot || 'sertamagotchi_bot';
     if (data.meta) {
-      if (data.meta.species && data.meta.species.length) SPECIES_META = data.meta.species;
-      if (data.meta.cases && data.meta.cases.length) CASES_META = data.meta.cases;
+      if (data.meta.species && data.meta.species.length) {
+        SPECIES_META = data.meta.species;
+        META.species = data.meta.species;
+      }
+      if (data.meta.cases && data.meta.cases.length) {
+        CASES_META = data.meta.cases;
+        META.cases = data.meta.cases;
+      }
+      if (data.meta.games && data.meta.games.length) META.games = data.meta.games;
+      if (data.meta.room && data.meta.room.length) META.room = data.meta.room;
+      if (data.meta.classes && data.meta.classes.length) META.classes = data.meta.classes;
+      if (data.meta.quests_pool && data.meta.quests_pool.length) META.quests_pool = data.meta.quests_pool;
+      if (data.meta.achv && data.meta.achv.length) META.achv = data.meta.achv;
+      if (data.meta.friend && data.meta.friend.length) META.friend = data.meta.friend;
+      if (typeof data.meta.energy_cost === 'number') META.energy_cost = data.meta.energy_cost;
+      if (typeof data.meta.max_level === 'number') META.max_level = data.meta.max_level;
     }
+    ACHV_PROG = data.achv_progress || {};
+    $('btnRename').onclick = openRename;
+    $('rnCancel').onclick = closeRename;
+    $('rnSave').onclick = submitRename;
+    $('rnInput').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') submitRename();
+      if (e.key === 'Escape') closeRename();
+    });
     render(data.pet);
     initFriends();
+    initProgress();
     setInterval(function() {
       apiState().then(function(r) { return r.json(); })
-        .then(function(d) { if (d.pet) render(d.pet); }).catch(function() {});
+        .then(function(d) {
+          if (d.pet) {
+            ACHV_PROG = d.achv_progress || ACHV_PROG;
+            render(d.pet);
+          }
+        }).catch(function() {});
     }, 30000);
   }).catch(function() {
     renderError('Нет связи с сервером', 'Проверь интернет и открой заново');

@@ -25,6 +25,7 @@ from game.balance import (
     HUNGER_DECAY_SLEEP_PER_HOUR,
     HUNGRY_NOTIFY_AT,
     HYGIENE_DECAY_PER_HOUR,
+    NAME_MAX_LEN,
     LOW_STAT_THRESHOLD,
     MAX_OFFLINE_SECONDS,
     MOOD_DECAY_PER_HOUR,
@@ -51,14 +52,30 @@ from game.balance import (
     STAGE_EGG,
     STAGE_TEEN,
     TEEN_AFTER_DAYS,
+    BED_REGEN_PER_LEVEL,
+    BOWL_SATIETY_PER_LEVEL,
+    CHARISMA_HYGIENE_MIN,
+    CHARISMA_PER_HOUR,
+    HIDDEN_CAP,
+    HUNGER_DECAY_NOBLE_MULT,
+    ROOM,
+    TREE_CAP_HOURS,
+    TREE_COINS_PER_HOUR,
+    WEAR_CHARISMA,
+    XP_GRANTS,
+    ZONE_PLAY_MOOD_PER_LEVEL,
 )
+from game import minigames
+from game import progress
 from game.cases import CASES, CHEST_ACC_TITLES, apply_drop, roll
 from game.pets import SPECIES, is_species
 from game.promo import redeem as redeem_promo
 from game.state import PetState
 
 ACTIONS = frozenset({'sync', 'feed', 'play', 'sleep', 'pet', 'clean', 'heal',
-                     'buy', 'wear', 'open_case', 'setpet', 'promo'})
+                     'buy', 'wear', 'open_case', 'setpet', 'promo',
+                     'game_start', 'game_end', 'quest_claim', 'collect_tree',
+                     'prestige', 'visit', 'rename'})
 
 
 def _clamp(v: float) -> float:
@@ -71,7 +88,7 @@ def tick(st: PetState, now: int) -> List[str]:
     Events: 'hungry' (every tick while hungry; the handler throttles),
     'sick' (a new sickness started), 'healed_auto' (recovered on its own,
     +1 care miss), 'neglect' (a stat just hit zero, +1 care miss),
-    'teen', 'adult'.
+    'teen', 'adult', 'class' (hidden stats picked an adult class).
     """
     events: List[str] = []
     dt = max(0, min(now - st.last_tick, MAX_OFFLINE_SECONDS))
@@ -79,6 +96,8 @@ def tick(st: PetState, now: int) -> List[str]:
         hours = dt / 3600.0
 
         hunger_rate = HUNGER_DECAY_SLEEP_PER_HOUR if st.sleeping else HUNGER_DECAY_PER_HOUR
+        if st.cls == 'noble':
+            hunger_rate *= HUNGER_DECAY_NOBLE_MULT
         prev_satiety = st.satiety
         st.satiety = _clamp(st.satiety - hunger_rate * hours)
         if prev_satiety > 0.0 and st.satiety <= 0.0:
@@ -86,16 +105,28 @@ def tick(st: PetState, now: int) -> List[str]:
             events.append('neglect')
 
         if st.sleeping:
-            st.energy = _clamp(st.energy + ENERGY_REGEN_SLEEP_PER_HOUR * hours)
+            st.energy = _clamp(st.energy + ENERGY_REGEN_SLEEP_PER_HOUR
+                               * (1.0 + BED_REGEN_PER_LEVEL * st.room.get('bed', 0)) * hours)
             st.coins += SLEEP_COINS_PER_HOUR * hours
         else:
             st.energy = _clamp(st.energy - ENERGY_DECAY_PER_HOUR * hours)
+
+        # денежное дерево: пассивный доход, копится до тапа-сбора
+        tree_lvl = st.room.get('tree', 0)
+        if tree_lvl > 0:
+            rate = TREE_COINS_PER_HOUR * tree_lvl
+            st.tree_pending = min(rate * TREE_CAP_HOURS,
+                                  st.tree_pending + rate * hours)
 
         prev_hygiene = st.hygiene
         st.hygiene = _clamp(st.hygiene - HYGIENE_DECAY_PER_HOUR * hours)
         if prev_hygiene > 0.0 and st.hygiene <= 0.0:
             st.care_miss += 1
             events.append('neglect')
+
+        # харизма растёт только при идеальной гигиене (скрытая стата)
+        if st.hygiene >= CHARISMA_HYGIENE_MIN:
+            st.ch = min(HIDDEN_CAP, st.ch + CHARISMA_PER_HOUR * hours)
 
         mood_dec = MOOD_DECAY_PER_HOUR * hours
         if st.satiety < LOW_STAT_THRESHOLD:
@@ -129,6 +160,12 @@ def tick(st: PetState, now: int) -> List[str]:
         if st.stage == STAGE_TEEN and now - st.born >= ADULT_AFTER_DAYS * 86400:
             st.stage = _adult_branch(st)
             events.append('adult')
+
+        # класс по доминирующей скрытой стате (догоняем и пропустивших тик)
+        if st.stage not in (STAGE_EGG, STAGE_BABY, STAGE_TEEN) and not st.cls:
+            st.cls = progress.dominant_class(st)
+            if st.cls:
+                events.append('class')
 
     st.last_tick = now
     return events
@@ -166,10 +203,25 @@ def best_food(st: PetState) -> str:
 def apply(st: PetState, action: str, arg: str, now: int) -> Tuple[PetState, str, bool]:
     """Apply an action. Returns (state, message_for_user, changed).
 
-    `changed` tells the handler whether to bump `rev` and edit the widget.
+    Central Progression 2.0 hook: every successful action feeds daily
+    quests and re-checks achievements; earned achievements are appended
+    to the message. `changed` tells the handler whether to bump `rev`
+    and edit the widget.
     """
     if action == 'sync':
+        progress.ensure_quests(st, now)
         return st, '', False
+    st, message, changed = _apply_core(st, action, arg, now)
+    if changed:
+        progress.on_action(st, action)
+    achv_lines = progress.check_achievements(st)
+    if achv_lines:
+        message = '\n'.join(([message] if message else []) + achv_lines)
+    return st, message, changed
+
+
+def _apply_core(st: PetState, action: str, arg: str,
+                now: int) -> Tuple[PetState, str, bool]:
 
     if action == 'feed':
         return _apply_feed(st, arg, now)
@@ -181,10 +233,12 @@ def apply(st: PetState, action: str, arg: str, now: int) -> Tuple[PetState, str,
             return st, '%s спит… не буди 🤫' % st.name, False
         if st.energy < PLAY_MIN_ENERGY:
             return st, 'Слишком устал для игр 😴', False
-        st.mood = _clamp(st.mood + PLAY_MOOD_GAIN)
+        st.mood = _clamp(st.mood + PLAY_MOOD_GAIN
+                         * (1.0 + ZONE_PLAY_MOOD_PER_LEVEL * st.room.get('zone', 0)))
         st.energy = _clamp(st.energy - PLAY_ENERGY_COST)
         st.care_score += 1
-        return st, 'Ура, весело! 🎉', True
+        message = 'Ура, весело! 🎉\n' + progress.add_xp(st, XP_GRANTS['play'], now)
+        return st, message.strip(), True
 
     if action == 'sleep':
         if st.stage == STAGE_EGG:
@@ -203,7 +257,8 @@ def apply(st: PetState, action: str, arg: str, now: int) -> Tuple[PetState, str,
         st.mood = _clamp(st.mood + PET_MOOD_GAIN)
         st.last_act = now
         st.last_act_code = 'pet'
-        return st, 'Муррр… 😊', True
+        message = 'Муррр… 😊\n' + progress.add_xp(st, XP_GRANTS['pet'], now)
+        return st, message.strip(), True
 
     if action == 'clean':
         last = st.cooldowns.get('clean', 0)
@@ -213,7 +268,9 @@ def apply(st: PetState, action: str, arg: str, now: int) -> Tuple[PetState, str,
         st.hygiene = 100.0
         st.coins += CLEAN_COINS
         st.care_score += 1
-        return st, '🛁 Чистота! +2🪙', True
+        message = ('🛁 Чистота! +%d🪙\n' % CLEAN_COINS
+                   + progress.add_xp(st, XP_GRANTS['clean'], now))
+        return st, message.strip(), True
 
     if action == 'heal':
         if not st.sick:
@@ -223,9 +280,14 @@ def apply(st: PetState, action: str, arg: str, now: int) -> Tuple[PetState, str,
         st.inv['med'] -= 1
         st.sick = False
         st.care_score += 2
-        return st, '💊 Лекарство помогло, %s здоров!' % st.name, True
+        message = ('💊 Лекарство помогло, %s здоров!\n' % st.name
+                   + progress.add_xp(st, XP_GRANTS['heal'], now))
+        return st, message.strip(), True
 
     if action == 'buy':
+        room_id = (arg or '').strip().lower()
+        if room_id in ROOM:
+            return _apply_buy_room(st, room_id)
         return _apply_buy(st, arg)
 
     if action == 'wear':
@@ -238,9 +300,65 @@ def apply(st: PetState, action: str, arg: str, now: int) -> Tuple[PetState, str,
         return _apply_setpet(st, arg)
 
     if action == 'promo':
-        return redeem_promo(st, arg)
+        return redeem_promo(st, arg, now)
+
+    if action == 'game_start':
+        return minigames.start(st, arg, now)
+
+    if action == 'game_end':
+        return minigames.end(st, arg, now)
+
+    if action == 'quest_claim':
+        return progress.claim_quests(st, now)
+
+    if action == 'prestige':
+        return progress.prestige(st, now)
+
+    if action == 'collect_tree':
+        return _apply_collect_tree(st)
+
+    if action == 'rename':
+        return _apply_rename(st, arg)
 
     return st, 'Не понимаю 🤔', False
+
+
+def _apply_rename(st: PetState, arg: str) -> Tuple[PetState, str, bool]:
+    name = ' '.join((arg or '').split())
+    if not name:
+        return st, 'Имя не может быть пустым 🙃', False
+    if len(name) > NAME_MAX_LEN:
+        return st, 'Имя длиннее %d символов 🤏' % NAME_MAX_LEN, False
+    if name == st.name:
+        return st, 'Так уже зовут 🙂', False
+    st.name = name
+    return st, 'Теперь я %s!' % name, True
+
+
+def _apply_collect_tree(st: PetState) -> Tuple[PetState, str, bool]:
+    pending = int(round(st.tree_pending))
+    if pending <= 0:
+        lvl = st.room.get('tree', 0)
+        if lvl == 0:
+            return st, 'Дерева ещё нет — купи его в магазине комнат 🌳', False
+        return st, 'Дерево пока не накопило монет, заходи позже 🌳', False
+    st.coins += pending
+    st.tree_pending = 0.0
+    return st, '🌳 Тряс дерево: +%d🪙 упало!' % pending, True
+
+
+def _apply_buy_room(st: PetState, room_id: str) -> Tuple[PetState, str, bool]:
+    item = ROOM[room_id]
+    lvl = st.room.get(room_id, 0)
+    if lvl >= len(item['prices']):
+        return st, '%s уже на максимальном уровне!' % item['title'], False
+    price = item['prices'][lvl]
+    if st.coins < price:
+        return st, ('Не хватает монет: нужно %d🪙, есть %d🪙'
+                    % (price, int(round(st.coins)))), False
+    st.coins -= price
+    st.room[room_id] = lvl + 1
+    return st, '%s — уровень %d! ✨' % (item['title'], lvl + 1), True
 
 
 def _apply_buy(st: PetState, item_id: str) -> Tuple[PetState, str, bool]:
@@ -270,6 +388,8 @@ def _apply_wear(st: PetState, item_id: str) -> Tuple[PetState, str, bool]:
     if item_id not in st.acc:
         return st, 'Сначала купи: /buy %s' % item_id, False
     st.worn = '' if st.worn == item_id else item_id
+    if st.worn:
+        st.ch = min(HIDDEN_CAP, st.ch + WEAR_CHARISMA)
     verb = 'Снял' if not st.worn else 'Надел'
     title = (SHOP.get(item_id, {}).get('title')
              or CHEST_ACC_TITLES.get(item_id, item_id))
@@ -281,11 +401,20 @@ def _apply_open_case(st: PetState, case_id: str) -> Tuple[PetState, str, bool]:
     case = CASES.get(case_id)
     if case is None:
         return st, 'Нет такого сундука 🤔', False
-    if st.coins < case['price']:
-        return st, ('Не хватает монет: %s стоит %d🪙, у тебя %d🪙. '
-                    'Спи побольше — во сне питомец зарабатывает!'
-                    % (case['title'], case['price'], int(round(st.coins)))), False
-    st.coins -= case['price']
+    currency = case.get('currency', 'coins')
+    if currency == 'gems':
+        if st.gems < case['price']:
+            return st, ('Не хватает кристаллов: %s стоит %d💎, у тебя %d💎. '
+                        'Кристаллы дают мини-игры и ачивки!'
+                        % (case['title'], case['price'], int(st.gems))), False
+        st.gems -= case['price']
+    else:
+        if st.coins < case['price']:
+            return st, ('Не хватает монет: %s стоит %d🪙, у тебя %d🪙. '
+                        'Спи побольше — во сне питомец зарабатывает!'
+                        % (case['title'], case['price'], int(round(st.coins)))), False
+        st.coins -= case['price']
+    st.chests_total += 1
     line = apply_drop(st, roll(case))
     return st, 'Открыл %s: %s' % (case['title'], line), True
 
@@ -335,12 +464,16 @@ def _apply_feed(st: PetState, arg: str, now: int) -> Tuple[PetState, str, bool]:
         effects = {'satiety': SCAVENGE_SATIETY}
         title = 'яблочко, найденное в кустах 🌿'
 
-    st.satiety = _clamp(st.satiety + effects.get('satiety', 0.0))
+    st.satiety = _clamp(st.satiety + effects.get('satiety', 0.0)
+                        + BOWL_SATIETY_PER_LEVEL * st.room.get('bowl', 0))
     st.mood = _clamp(st.mood + effects.get('mood', 0.0))
     st.energy = _clamp(st.energy + effects.get('energy', 0.0))
     st.care_score += 1
     suffix = ' 🤒' if st.sick else ''
-    return st, '%s съеден%s: +%s сытости' % (title, suffix, int(effects.get('satiety', 0.0))), True
+    message = ('%s съеден%s: +%s сытости\n'
+               % (title, suffix, int(effects.get('satiety', 0.0)))
+               + progress.add_xp(st, XP_GRANTS['feed'], now))
+    return st, message.strip(), True
 
 
 def phrase(st: PetState) -> str:

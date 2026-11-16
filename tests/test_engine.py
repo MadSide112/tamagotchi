@@ -370,5 +370,43 @@ class TestJson(unittest.TestCase):
         self.assertLess(len(pub_json.encode('utf-8')), 256)  # answer payload part
 
 
+class TestRename(unittest.TestCase):
+    def test_rename_ok(self):
+        st = baby()
+        st2, msg, changed = engine.apply(st, 'rename', 'Барсик', T0)
+        self.assertTrue(changed)
+        self.assertEqual(st2.name, 'Барсик')
+
+    def test_rename_exactly_15(self):
+        st = baby()
+        name = 'Б' * 15
+        st2, msg, changed = engine.apply(st, 'rename', name, T0)
+        self.assertTrue(changed)
+        self.assertEqual(st2.name, name)
+
+    def test_rename_too_long(self):
+        st = baby()
+        st2, msg, changed = engine.apply(st, 'rename', 'x' * 16, T0)
+        self.assertFalse(changed)
+        self.assertEqual(st2.name, st.name)
+
+    def test_rename_empty(self):
+        st = baby()
+        st2, msg, changed = engine.apply(st, 'rename', '   ', T0)
+        self.assertFalse(changed)
+        self.assertEqual(st2.name, st.name)
+
+    def test_rename_same(self):
+        st = baby()
+        st2, msg, changed = engine.apply(st, 'rename', st.name, T0)
+        self.assertFalse(changed)
+
+    def test_rename_collapses_whitespace(self):
+        st = baby()
+        st2, msg, changed = engine.apply(st, 'rename', '  Мур   зик ', T0)
+        self.assertTrue(changed)
+        self.assertEqual(st2.name, 'Мур зик')
+
+
 if __name__ == '__main__':
     unittest.main()

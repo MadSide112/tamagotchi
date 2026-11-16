@@ -122,13 +122,13 @@ class TestCases(unittest.TestCase):
         st.coins = 100
         st, msg, changed = engine.apply(st, 'open_case', 'simple', T0)
         self.assertTrue(changed)
-        self.assertTrue(msg.startswith('Открыл 📦 Обычный сундук'))
+        self.assertTrue(msg.startswith('Открыл 🪵 Деревянный сундук'))
         # цена списана, дроп монет только добавляет
         self.assertGreaterEqual(st.coins, 50)
 
     def test_ui_meta(self):
         meta = ui_meta()
-        self.assertEqual([m['id'] for m in meta], ['simple', 'golden'])
+        self.assertEqual([m['id'] for m in meta], ['simple', 'golden', 'mythic'])
         for m in meta:
             self.assertTrue(m['title'] and m['price'] > 0)
             self.assertTrue(m['drops'] and all(isinstance(d, str) for d in m['drops']))

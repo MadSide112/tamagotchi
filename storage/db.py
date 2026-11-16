@@ -43,6 +43,10 @@ class Db:
             'CREATE TABLE IF NOT EXISTS promo_used ('
             'user_id INTEGER NOT NULL, code TEXT NOT NULL, ts INTEGER NOT NULL, '
             'PRIMARY KEY (user_id, code))')
+        # глобальные счётчики активаций (лимиты max_uses у timed-промокодов)
+        self._conn.execute(
+            'CREATE TABLE IF NOT EXISTS promo_stats ('
+            'code TEXT PRIMARY KEY, uses INTEGER NOT NULL DEFAULT 0)')
 
     def _run(self, sql: str, params: tuple = (), fetch: str = ''):
         with self._lock:
@@ -124,4 +128,17 @@ class Db:
             self._run,
             'INSERT OR IGNORE INTO promo_used(user_id, code, ts) VALUES(?,?,?)',
             (user_id, code, ts),
+        )
+
+    async def promo_uses(self, code: str) -> int:
+        row = await asyncio.to_thread(
+            self._query, 'SELECT uses FROM promo_stats WHERE code=?', (code,))
+        return int(row[0][0]) if row else 0
+
+    async def promo_inc(self, code: str) -> None:
+        await asyncio.to_thread(
+            self._run,
+            'INSERT INTO promo_stats(code, uses) VALUES(?, 1) '
+            'ON CONFLICT(code) DO UPDATE SET uses = uses + 1',
+            (code,),
         )

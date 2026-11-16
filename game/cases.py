@@ -11,13 +11,13 @@ To add a chest or a drop, add one dict entry — nothing else changes.
 import random
 from typing import Dict
 
-from game.balance import SHOP
+from game.balance import FRAG_DUPE_COINS, FRAG_NEED, SHOP
 from game.pets import SPECIES
 from game.state import PetState
 
 CASES: Dict[str, dict] = {
     'simple': {
-        'title': '📦 Обычный сундук',
+        'title': '🪵 Деревянный сундук',
         'price': 50,
         'desc': 'Монеты, еда и первые питомцы',
         'drops': [
@@ -52,21 +52,39 @@ CASES: Dict[str, dict] = {
             {'kind': 'pet', 'id': 'panda', 'weight': 6, 'dupe_coins': 250, 'label': '🐼 Панда'},
         ],
     },
+    'mythic': {
+        'title': '💎 Мифический сундук',
+        'price': 45,
+        'currency': 'gems',
+        'desc': 'Осколки редких питомцев, кристаллы и корона',
+        'drops': [
+            {'kind': 'frag', 'id': 'fox', 'weight': 22,
+             'label': '🧩 Осколок: 🦊 Лисёнок (1/5)'},
+            {'kind': 'frag', 'id': 'panda', 'weight': 18,
+             'label': '🧩 Осколок: 🐼 Панда (1/8)'},
+            {'kind': 'frag', 'id': 'snow_leopard', 'weight': 10,
+             'label': '🧩 Осколок: 🐆 Снежный барс (1/12)'},
+            {'kind': 'coins', 'min': 80, 'max': 220, 'weight': 16, 'label': '🪙 80–220 монет'},
+            {'kind': 'gems', 'min': 5, 'max': 12, 'weight': 14, 'label': '💎 5–12 кристаллов'},
+            {'kind': 'acc', 'id': 'crown', 'weight': 6, 'dupe_coins': 300, 'label': '👑 Корона'},
+            {'kind': 'item', 'id': 'cake', 'qty': 3, 'weight': 8, 'label': '🍰 3 торта'},
+        ],
+    },
 }
 
 
 # Chest-exclusive accessories (not sold in the shop); engine._apply_wear
 # falls back here for titles.
-CHEST_ACC_TITLES = {'crown': '👑 Корона'}
+CHEST_ACC_TITLES = {'crown': '👑 Корона', 'ring': '💍 Кольцо дружбы'}
 
 
 def roll(case: dict) -> dict:
     """Server-side weighted roll. Returns a copy of the drop dict; for a
-    'coins' drop adds the rolled 'amount'."""
+    'coins'/'gems' drop adds the rolled 'amount'."""
     drops = case['drops']
     drop = random.choices(drops, weights=[d['weight'] for d in drops], k=1)[0]
     result = dict(drop)
-    if result['kind'] == 'coins':
+    if result['kind'] in ('coins', 'gems'):
         result['amount'] = random.randint(result['min'], result['max'])
     return result
 
@@ -89,6 +107,10 @@ def apply_drop(st: PetState, drop: dict) -> str:
     if kind == 'coins':
         st.coins += drop['amount']
         return '🪙 +%d %s!' % (drop['amount'], _coins_word(drop['amount']))
+
+    if kind == 'gems':
+        st.gems += drop['amount']
+        return '💎 +%d кристаллов!' % drop['amount']
 
     if kind == 'item':
         st.inv[drop['id']] = st.inv.get(drop['id'], 0) + int(drop.get('qty', 1))
@@ -115,11 +137,27 @@ def apply_drop(st: PetState, drop: dict) -> str:
         st.species = drop['id']  # the new pet is auto-equipped
         return 'Новый питомец: %s!' % title
 
+    if kind == 'frag':
+        need = FRAG_NEED[drop['id']]
+        st.frags[drop['id']] = st.frags.get(drop['id'], 0) + 1
+        if st.frags[drop['id']] < need:
+            return '🧩 Осколок: %s (%d/%d)' % (SPECIES[drop['id']]['title'],
+                                              st.frags[drop['id']], need)
+        st.frags[drop['id']] = 0
+        title = SPECIES[drop['id']]['title']
+        if drop['id'] in st.pets:
+            st.coins += FRAG_DUPE_COINS
+            return '%s уже был — компенсация +%d🪙' % (title, FRAG_DUPE_COINS)
+        st.pets.append(drop['id'])
+        st.species = drop['id']
+        return '🥚 Новый питомец из осколков: %s!' % title
+
     return ''
 
 
 def ui_meta() -> list:
     """Drop tables for the Mini App display (delivered via /api/state meta)."""
-    return [{'id': cid, 'title': c['title'], 'price': c['price'], 'desc': c['desc'],
+    return [{'id': cid, 'title': c['title'], 'price': c['price'],
+             'currency': c.get('currency', 'coins'), 'desc': c['desc'],
              'drops': [d['label'] for d in c['drops']]}
             for cid, c in CASES.items()]
