@@ -17,9 +17,11 @@ Checks, in order:
 Exit code 0 only when every check passes.
 """
 import json
+import os
 import pathlib
 import subprocess
 import sys
+import tempfile
 import time
 import urllib.request
 
@@ -27,7 +29,7 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 URL_FILE = ROOT / 'data' / 'tunnel_url'
 ENV_FILE = ROOT / '.env'
 WEB_PORT = 8321
-KEEPER_LOG = '/tmp/tama_tunnel.log'
+KEEPER_LOG = os.path.join(tempfile.gettempdir(), 'tama_tunnel.log')
 FLIP_WAIT_SECONDS = 90   # max time to wait for the keeper to re-open a tunnel
 PROBE_TIMEOUT = 8
 
@@ -72,6 +74,17 @@ def tg(method: str, payload: dict) -> dict:
 
 
 def keeper_running() -> bool:
+    if os.name == 'nt':
+        # на Windows нет pgrep: ищем python-процесс по командной строке
+        out = subprocess.run(
+            ['powershell', '-NoProfile', '-Command',
+             '(Get-CimInstance Win32_Process | '
+             'Where-Object {$_.CommandLine -match \'tunnel_keepalive.py\'}).Count'],
+            capture_output=True, text=True)
+        try:
+            return int(out.stdout.strip() or '0') > 0
+        except ValueError:
+            return False
     out = subprocess.run(['pgrep', '-f', 'tools/tunnel_keepalive.py'],
                          capture_output=True, text=True)
     return out.returncode == 0
@@ -79,9 +92,13 @@ def keeper_running() -> bool:
 
 def start_keeper() -> None:
     log = open(KEEPER_LOG, 'ab')
-    subprocess.Popen(
-        ['python3', str(ROOT / 'tools' / 'tunnel_keepalive.py')],
-        stdout=log, stderr=log, start_new_session=True)
+    kwargs = {}
+    if os.name == 'nt':
+        kwargs['creationflags'] = subprocess.CREATE_NO_WINDOW
+    else:
+        kwargs['start_new_session'] = True
+    subprocess.Popen([sys.executable, str(ROOT / 'tools' / 'tunnel_keepalive.py')],
+                     stdout=log, stderr=log, **kwargs)
     print('keeper restarted (log: %s)' % KEEPER_LOG, flush=True)
 
 

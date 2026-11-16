@@ -43,6 +43,14 @@ localhost.run через ssh, keeper `tools/tunnel_keepalive.py` пишет URL 
 - Dev-браузер (эмуляция Telegram): `http://127.0.0.1:8321/app_test` при `TAMAGOTCHI_DEV_TEST=1` (user 900000001, initData подписан сервером)
 - Keeper туннеля: `nohup python3 tools/tunnel_keepalive.py >> /tmp/tama_tunnel.log 2>&1 &`
 
+### Windows-машина (с 2026-11-16)
+
+- venv: `venv/Scripts/python.exe` (не `venv/bin`).
+- Рестарт бота: `netstat -ano | grep :8321` (узнать PID) → `taskkill //F //PID <pid>`
+  (двойной слэш — Git Bash съедает одинарный), потом запуск как выше, но
+  `./venv/Scripts/python.exe`.
+- Лог keeper: `%TEMP%\tama_tunnel.log` — путь печатает check_tunnel при рестарте.
+
 ## Архитектурные правила
 
 - Серверная валидация всего: клиент только просит (`action` + `arg`), лимиты — из `game/balance.py` (единый источник истины, например `NAME_MAX_LEN`).
@@ -58,3 +66,6 @@ localhost.run через ssh, keeper `tools/tunnel_keepalive.py` пишет URL 
 - Туннель localhost.run выдаёт новый URL при каждом ронятии; старый отвечает 502 «no tunnel». Рабочая точка входа — всегда кнопка меню (её обновляет watcher).
 - venv пересоздаётся на месте (`python3 -m venv venv && venv/bin/pip install -r requirements.lock`), не переносится.
 - Если в workspace выше лежит Unity-ориентированный AGENTS.md — к этому проекту он не относится.
+- После холодного старта первый прогон check_tunnel всегда даёт ЕСТЬ ПРОБЛЕМЫ
+  (keeper не запущен → FAIL зафиксирован, потом гейт сам его поднял) — просто
+  прогнать гейт второй раз.

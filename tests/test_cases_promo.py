@@ -216,6 +216,7 @@ class TestDbPromo(unittest.IsolatedAsyncioTestCase):
             self.assertFalse(await db.promo_redeemed(2, 'COINS200'))
             # повторный mark идемпотентен (INSERT OR IGNORE)
             await db.promo_mark(1, 'COINS200', T0 + 5)
+            db.close()  # Windows: открытый sqlite нельзя удалить в cleanup
 
 
 if __name__ == '__main__':

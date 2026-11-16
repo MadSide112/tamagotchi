@@ -32,6 +32,9 @@ class Db:
         self._conn.commit()
         self._lock = threading.Lock()
 
+    def close(self) -> None:
+        self._conn.close()
+
     def _migrate(self) -> None:
         cols = {r[1] for r in self._conn.execute('PRAGMA table_info(pets)')}
         if 'sick_warn' not in cols:

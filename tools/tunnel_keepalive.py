@@ -12,6 +12,7 @@ server is healthy => the ssh session is killed and a fresh tunnel is
 opened (new URL gets picked up by main.py's menu-button watcher).
 """
 import asyncio
+import os
 import pathlib
 import sys
 import time
@@ -45,7 +46,7 @@ async def http_ok(url: str) -> bool:
     """True if url/api/health answers HTTP 200 (502 'no tunnel' fails this)."""
     try:
         proc = await asyncio.create_subprocess_exec(
-            'curl', '-s', '-m', '8', '-o', '/dev/null', '-w', '%{http_code}',
+            'curl', '-s', '-m', '8', '-o', os.devnull, '-w', '%{http_code}',
             url.rstrip('/') + '/api/health',
             stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL)
         out, _ = await asyncio.wait_for(proc.communicate(), timeout=12)
