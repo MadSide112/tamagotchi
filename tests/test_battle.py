@@ -183,6 +183,23 @@ class TestBattleStart(unittest.TestCase):
             {'m', 'ef', 'et', 'eh', 'ehm', 'ph', 'phm', 'tn', 'pu', 'sc',
              'es', 'sd', 'ts'})
 
+    def test_web_dict_session_without_weapon(self):
+        """web_dict при активной сессии боя без надетого оружия (регресс 500)."""
+        st = started()
+        view = st.web_dict()
+        self.assertIn('battle', view)
+        self.assertEqual(view['battle']['my_element'],
+                         SPECIES_ELEMENT.get(st.species, 'fire'))
+
+    def test_web_dict_session_with_weapon_element(self):
+        """Надетый клинок с элементом переопределяет элемент в view боя."""
+        st = started()
+        st.gi = list(GEAR.keys())
+        st.gw = {'weapon': 'sword_flame'}
+        view = st.web_dict()
+        self.assertEqual(view['battle']['my_element'],
+                         GEAR['sword_flame']['element'])
+
     def test_floor_arg_clamped_to_df_plus_1(self):
         st = mk(df=0)
         st, msg, changed = battle.battle_start(st, 'f99', T1)

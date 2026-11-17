@@ -223,7 +223,7 @@ class PetState:
                 'skill': None if skill is None else {
                     'id': skill['id'], 'title': skill['title'],
                     'emoji': skill['emoji'], 'desc': skill['desc']},
-                'my_element': weapon.get('element') or SPECIES_ELEMENT.get(self.species, 'fire'),
+                'my_element': (weapon or {}).get('element') or SPECIES_ELEMENT.get(self.species, 'fire'),
             }
         return {
             'rev': self.rev,
