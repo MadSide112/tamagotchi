@@ -7,6 +7,7 @@ import sys
 import time
 
 sys.path.insert(0, '/root/tama/repo')
+from game.balance import ROOM  # noqa: E402
 from game.progress import add_xp  # noqa: E402
 from game.state import PetState  # noqa: E402
 
@@ -50,10 +51,12 @@ for a in ('bt', 'ex'):
 # ВАЖНО: сдвинуть last_tick на сейчас, иначе первый sync-тик сервера списит
 # часы распада от старой метки и закатит болезнь поверх буста.
 st.last_tick = int(time.time())
+# комната: все апгрейды на максимум — видно и оверлеи дома, и спрайты магазина
+st.room = {rid: len(item['prices']) for rid, item in ROOM.items()}
 db.execute('UPDATE pets SET state=? WHERE user_id=?', (st.to_json(), UID))
 db.commit()
 after = PetState.from_json(db.execute(
     'SELECT state FROM pets WHERE user_id=?', (UID,)).fetchone()[0])
-print('after: stage=%s name=%s lv=%s mood=%s sat=%s en=%s p=%s iq=%s ch=%s coins=%s' % (
+print('after: stage=%s name=%s lv=%s mood=%s sat=%s en=%s p=%s iq=%s ch=%s coins=%s room=%s' % (
     after.stage, after.name, after.lv, after.mood, after.satiety,
-    after.energy, after.p, after.iq, after.ch, after.coins))
+    after.energy, after.p, after.iq, after.ch, after.coins, after.room))
