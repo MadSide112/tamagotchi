@@ -117,6 +117,53 @@ class Db:
             self._run, 'SELECT user_id FROM pets ORDER BY updated_at ASC', (), 'all')
         return [r[0] for r in rows or []]
 
+    async def arena_rows(self, exclude_user_id) -> list:
+        # состояние арены живёт внутри state JSON: разбираем в Python
+        rows = await asyncio.to_thread(
+            self._run,
+            'SELECT user_id, state FROM pets',
+            (),
+            'all',
+        )
+        out = []
+        for user_id, state_json in rows or []:
+            try:
+                st = json.loads(state_json)
+            except (ValueError, TypeError):
+                continue
+            # stage 0 — яйцо: в арене не участвует
+            if st.get('s', 0) == 0:
+                continue
+            if int(user_id) == exclude_user_id:
+                continue
+            out.append({'user_id': int(user_id), 'state': st})
+        return out
+
+    async def arena_top(self, limit: int = 10) -> list:
+        rows = await asyncio.to_thread(
+            self._run,
+            'SELECT user_id, state FROM pets',
+            (),
+            'all',
+        )
+        top = []
+        for user_id, state_json in rows or []:
+            try:
+                st = json.loads(state_json)
+            except (ValueError, TypeError):
+                continue
+            # stage 0 — яйцо: в топе арены ему не место
+            if st.get('s', 0) == 0:
+                continue
+            top.append({
+                'name': st.get('n', 'Пуся'),
+                'species': st.get('sp', 'cat'),
+                'rating': st.get('ar', 1000),
+                'lv': st.get('lv', 1),
+            })
+        top.sort(key=lambda r: -r['rating'])
+        return top[:limit]
+
     async def promo_redeemed(self, user_id: int, code: str) -> bool:
         row = await asyncio.to_thread(
             self._run,
@@ -134,9 +181,8 @@ class Db:
         )
 
     async def promo_uses(self, code: str) -> int:
-        row = await asyncio.to_thread(
-            self._query, 'SELECT uses FROM promo_stats WHERE code=?', (code,))
-        return int(row[0][0]) if row else 0
+        row = await asyncio.to_thread(self._run, 'SELECT uses FROM promo_stats WHERE code=?', (code,), 'one')
+        return int(row[0]) if row else 0
 
     async def promo_inc(self, code: str) -> None:
         await asyncio.to_thread(

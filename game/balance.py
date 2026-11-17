@@ -178,3 +178,156 @@ FRAG_DUPE_COINS = 150        # осколки на уже собранного �
 FRIEND_POINTS_PER_VISIT = 1
 FRIEND_VISIT_COOLDOWN_HOURS = 20
 FRIEND_ACC = {'ring': {'need': 10, 'title': '💍 Кольцо дружбы'}}
+
+# ======================= БОЕВАЯ СИСТЕМА =======================
+
+# --- пошаговый PvE-бой (Подземелье) ---
+BT_ENERGY_COST = 12.0            # списывается при входе в бой
+BT_SESSION_SECONDS = 1800        # сессия боя протухает (считается отступлением)
+BT_POTIONS_PER_BATTLE = 2        # максимум зелий за бой (расход inv['med'])
+BT_CRIT_BASE = 0.05              # базовый шанс крита
+BT_CRIT_MOOD_MULT = 0.002        # +0.2% за единицу настроения (кап 0.35)
+BT_CRIT_DAMAGE = 1.6             # множитель крит-урона
+BT_SKILL_COOLDOWN = 3            # кд по умолчанию (реальный — в BT_SKILLS[cls]['cd'])
+BT_DAILY_COIN_CAP = 200          # мягкий кап монет из боёв в сутки (UTC)
+BT_WIN_MOOD = 3.0
+BT_LOSE_MOOD = -5.0              # NO DEATH: поражение = отступление
+BT_FLEE_MOOD = -2.0
+BT_POTION_HEAL = 0.30            # зелье лечит 30% max_hp
+BT_DEF_MULT = 0.4                # «Защита»: входящий урон ×0.4
+BT_DEF_REGEN_MULT = 2.0          # в защите реген удваивается
+BT_MAX_TURNS = 40                # страховка: дольше — ничья (ничья = отступление)
+
+# --- колесо элементов: 🔥 > 💨 > 🪨 > 💧 > 🔥 ---
+ELEMENTS = {
+    'fire':  {'title': 'Огонь',  'emoji': '🔥', 'strong': 'wind'},
+    'wind':  {'title': 'Воздух', 'emoji': '💨', 'strong': 'earth'},
+    'earth': {'title': 'Земля',  'emoji': '🪨', 'strong': 'water'},
+    'water': {'title': 'Вода',   'emoji': '💧', 'strong': 'fire'},
+}
+SPECIES_ELEMENT = {
+    'cat': 'fire', 'fox': 'fire',
+    'bunny': 'wind',
+    'hamster': 'earth', 'panda': 'earth', 'dog': 'earth',
+    'duck': 'water', 'snow_leopard': 'water',
+}
+ELEMENT_STRONG_MULT = 1.5
+ELEMENT_WEAK_MULT = 0.75
+
+# --- Подземелье: враги и награды ---
+DUNGEON_ENEMIES = {
+    'slime':    {'title': '🟢 Слизень',      'element': 'water'},
+    'rat':      {'title': '🐀 Крыса',        'element': 'earth'},
+    'bat':      {'title': '🦇 Летучая мышь', 'element': 'wind'},
+    'mushroom': {'title': '🍄 Хитрый гриб',  'element': 'water'},
+    'ghost':    {'title': '👻 Призрак',      'element': 'fire'},
+    'golem':    {'title': '🗿 Голем',        'element': 'earth'},
+}
+DUNGEON_ENEMY_HP = (30, 12)      # hp = HP[0] + HP[1] * floor
+DUNGEON_ENEMY_ATK = (4, 2)
+DUNGEON_ENEMY_DEF = (1, 0.5)
+DUNGEON_BOSS_MULT = 1.6          # каждый 5-й этаж — босс 👑
+DUNGEON_BOSS_HEAVY_CHANCE = 0.25 # шанс усиленной атаки босса
+DUNGEON_ENEMY_HEAVY = 1.3
+DUNGEON_COINS = (8, 2)           # монеты = COINS[0] + COINS[1] * floor
+DUNGEON_XP = (10, 3)
+DUNGEON_GEAR_DROP_CHANCE = 0.35  # босс: шанс выпадения предмета экипировки
+DUNGEON_GEM_CHANCE = 0.5         # босс: шанс 1–2 кристаллов
+
+# --- Экспедиции (idle: ушёл — вернулся с наградой) ---
+EXPEDITIONS = {
+    'yard': {
+        'title': '🏡 Двор', 'sec': 600, 'coins': 25, 'xp': 10,
+        'desc': 'Короткая прогулка — 10 минут',
+        'drops': [
+            {'kind': 'none',  'w': 50, 'label': '🌿 Пусто'},
+            {'kind': 'coins', 'n': (8, 15),  'w': 35, 'label': '🪙 +8–15 монет'},
+            {'kind': 'gem',   'n': (1, 1),   'w': 15, 'label': '💎 +1 кристалл'},
+        ],
+    },
+    'forest': {
+        'title': '🌳 Лес', 'sec': 3600, 'coins': 60, 'xp': 25,
+        'desc': 'Час приключений в чаще',
+        'drops': [
+            {'kind': 'none',  'w': 35, 'label': '🌿 Пусто'},
+            {'kind': 'coins', 'n': (15, 25), 'w': 30, 'label': '🪙 +15–25 монет'},
+            {'kind': 'gem',   'n': (1, 1),   'w': 20, 'label': '💎 +1 кристалл'},
+            {'kind': 'frag',  'id': 'fox',   'w': 12, 'label': '🧩 Осколок: 🦊 Лисёнок'},
+            {'kind': 'gear',  'id': 'amulet_leather', 'w': 3, 'label': '🧵 Кожаный талисман'},
+        ],
+    },
+    'cave': {
+        'title': '⛰ Пещера', 'sec': 10800, 'coins': 120, 'xp': 60,
+        'desc': 'Три часа в глубинах',
+        'drops': [
+            {'kind': 'none',  'w': 30, 'label': '🌿 Пусто'},
+            {'kind': 'coins', 'n': (25, 40), 'w': 25, 'label': '🪙 +25–40 монет'},
+            {'kind': 'gem',   'n': (1, 2),   'w': 18, 'label': '💎 +1–2 кристалла'},
+            {'kind': 'frag',  'id': 'panda', 'w': 15, 'label': '🧩 Осколок: 🐼 Панда'},
+            {'kind': 'gear',  'id': 'sword_iron',   'w': 8, 'label': '⚔️ Стальной клинок'},
+            {'kind': 'gear',  'id': 'amulet_iron',  'w': 4, 'label': '🧿 Железный амулет'},
+        ],
+    },
+    'ruins': {
+        'title': '🏛 Древние руины', 'sec': 28800, 'coins': 250, 'xp': 150,
+        'desc': 'Восемь часов среди тайн',
+        'drops': [
+            {'kind': 'none',  'w': 25, 'label': '🌿 Пусто'},
+            {'kind': 'coins', 'n': (40, 70), 'w': 20, 'label': '🪙 +40–70 монет'},
+            {'kind': 'gem',   'n': (1, 2),   'w': 20, 'label': '💎 +1–2 кристалла'},
+            {'kind': 'frag',  'id': 'snow_leopard', 'w': 15, 'label': '🧩 Осколок: 🐆 Снежный барс'},
+            {'kind': 'gear',  'id': 'sword_flame',   'w': 8, 'label': '🔥 Огненный клинок'},
+            {'kind': 'gear',  'id': 'sword_iron',    'w': 7, 'label': '⚔️ Стальной клинок'},
+            {'kind': 'gear',  'id': 'amulet_crystal', 'w': 5, 'label': '💠 Кристальный амулет'},
+        ],
+    },
+}
+EXPEDITION_CARE_MULT_MIN = 0.5   # множитель = 0.5 + сытость/200 + настроение/200
+EXPEDITION_CARE_MULT_MAX = 1.5
+EXPEDITION_MOOD_BONUS = 5.0
+
+# --- PvP-арена (async: бои по снапшотам соперников) ---
+ARENA_RATING_START = 1000
+ARENA_RATING_FLOOR = 100
+ARENA_K = 32
+ARENA_DAILY_CAP = 10
+ARENA_ENERGY_COST = 10.0
+ARENA_WIN_COINS = 20
+ARENA_WIN_XP = 5
+ARENA_MIN_LEVEL = 3
+ARENA_CANDIDATES = 3
+ARENA_LEVEL_WINDOW = (-5, 10)    # разрыв уровней с соперником: −5..+10
+ARENA_MAX_TURNS = 40
+
+# --- Экипировка ---
+GEAR_SLOTS = ('weapon', 'amulet')
+GEAR_MAX_LEVEL = 3
+GEAR_UP_MULT = 1.5               # стат ×(1 + 0.5*(lvl−1))
+GEAR_DUPE_COINS = 30             # дубликат предмета -> компенсация монетами
+GEAR = {
+    'sword_rusty':    {'slot': 'weapon', 'title': '🗡 Ржавый клинок',   'price': 80,
+                       'atk': 4,  'up_cost': [60, 120]},
+    'sword_iron':     {'slot': 'weapon', 'title': '⚔️ Стальной клинок', 'price': 0, 'drop_only': True,
+                       'atk': 8,  'up_cost': [100, 200]},
+    'sword_flame':    {'slot': 'weapon', 'title': '🔥 Огненный клинок', 'price': 0, 'drop_only': True,
+                       'atk': 12, 'element': 'fire', 'up_cost': [180, 360]},
+    'amulet_leather': {'slot': 'amulet', 'title': '🧵 Кожаный талисман', 'price': 60,
+                       'def': 3,  'hp': 10, 'up_cost': [50, 100]},
+    'amulet_iron':    {'slot': 'amulet', 'title': '🧿 Железный амулет', 'price': 0, 'drop_only': True,
+                       'def': 6,  'hp': 20, 'mag': 3, 'up_cost': [90, 180]},
+    'amulet_crystal': {'slot': 'amulet', 'title': '💠 Кристальный амулет', 'price': 0, 'drop_only': True,
+                       'def': 9,  'hp': 35, 'mag': 6, 'up_cost': [160, 320]},
+}
+
+# --- Скиллы классов (кд в ходах) ---
+BT_SKILLS = {
+    'warrior': {'id': 'smash', 'title': 'Сокрушительный удар', 'emoji': '💥',
+                'mult': 1.7, 'def_ignore': 0.5, 'cd': 3,
+                'desc': '×1.7 атаки, игнорирует половину защиты'},
+    'mage':    {'id': 'fireball', 'title': 'Огненный шар', 'emoji': '☄️',
+                'mult': 1.8, 'element': 'fire', 'cd': 3,
+                'desc': '×1.8 магии, всегда урон огнём'},
+    'noble':   {'id': 'lullaby', 'title': 'Усыпление', 'emoji': '😴',
+                'mult': 0.6, 'stun': True, 'cd': 4,
+                'desc': 'враг пропускает ход, немного урона'},
+}

@@ -8,6 +8,7 @@ GET  /app_test  — dev-only harness (env TAMAGOTCHI_DEV_TEST=1): the same page
 GET  /api/health— liveness probe (tunnel keeper uses it)
 GET  /api/state — authenticated full pet state (+ bot username for links)
 GET  /api/top   — authenticated leaderboard rows
+GET  /api/arena_top — authenticated arena leaderboard (by rating)
 POST /api/pet   — authenticated care API: body {initData, action, arg}
 
 Every /api request is authenticated by validating Telegram initData
@@ -30,8 +31,30 @@ from aiohttp import web
 from bot.security import validate_init_data
 from game import engine
 from game import progress
-from game.balance import CLASSES, DAILY_REWARDS, FRIEND_ACC, MAX_LEVEL, MG_ENERGY_COST, QUEST_POOL
+from game.arena import pick_opponents
+from game.balance import (
+    ARENA_CANDIDATES,
+    ARENA_DAILY_CAP,
+    ARENA_ENERGY_COST,
+    ARENA_MIN_LEVEL,
+    ARENA_WIN_COINS,
+    ARENA_WIN_XP,
+    BT_DAILY_COIN_CAP,
+    BT_ENERGY_COST,
+    BT_POTIONS_PER_BATTLE,
+    BT_SKILLS,
+    CLASSES,
+    DAILY_REWARDS,
+    ELEMENTS,
+    FRIEND_ACC,
+    MAX_LEVEL,
+    MG_ENERGY_COST,
+    QUEST_POOL,
+    SPECIES_ELEMENT,
+)
 from game.cases import ui_meta as cases_ui_meta
+from game.expeditions import expeditions_meta
+from game.gear import gear_meta
 from game.minigames import games_meta
 from game.pets import SPECIES
 from game.state import PetState
@@ -167,10 +190,31 @@ def build_web_app(app, bot_token: str, webapp_html: str,
         row = await app.db.get_pet(user_id)
         achv_progress = (progress.progress_for(PetState.from_json(row['state']))
                          if row else {})
+        # справочник боевой системы + соперники арены (по уровню бойца)
+        arena_rows = await app.db.arena_rows(user_id)
+        battle_meta = {
+            'elements': dict(ELEMENTS),
+            'species_element': dict(SPECIES_ELEMENT),
+            'expeditions': expeditions_meta(),
+            'gear': gear_meta(),
+            'skills': dict(BT_SKILLS),
+            'arena': {'min_level': ARENA_MIN_LEVEL,
+                      'daily_cap': ARENA_DAILY_CAP,
+                      'energy_cost': int(ARENA_ENERGY_COST),
+                      'win_coins': ARENA_WIN_COINS,
+                      'win_xp': ARENA_WIN_XP,
+                      'candidates': pick_opponents(arena_rows, user_id,
+                                                   state['level'],
+                                                   ARENA_CANDIDATES)},
+            'bt_energy_cost': int(BT_ENERGY_COST),
+            'potions_max': BT_POTIONS_PER_BATTLE,
+            'daily_coin_cap': BT_DAILY_COIN_CAP,
+        }
         return web.json_response({'pet': state, 'bot': app.bot_username,
                                   'achv_progress': achv_progress,
                                   'daily': daily,
-                                  'meta': {'species': species_meta,
+                                  'meta': {'battle': battle_meta,
+                                           'species': species_meta,
                                            'cases': cases_ui_meta(),
                                            'games': games_meta(),
                                            'energy_cost': int(MG_ENERGY_COST),
@@ -197,6 +241,14 @@ def build_web_app(app, bot_token: str, webapp_html: str,
         if user_id is None:
             return web.json_response({'error': 'unauthorized'}, status=401)
         rows = await app.db.list_pets(10)
+        return web.json_response({'rows': rows})
+
+    @routes.get('/api/arena_top')
+    async def api_arena_top(request: web.Request) -> web.Response:
+        user_id = _auth(request)
+        if user_id is None:
+            return web.json_response({'error': 'unauthorized'}, status=401)
+        rows = await app.db.arena_top(10)
         return web.json_response({'rows': rows})
 
     @routes.post('/api/pet')

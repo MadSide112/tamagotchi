@@ -424,6 +424,34 @@
   }
   .gresult .copybtn { width: auto; padding: 10px 28px; margin-top: 0; }
 
+  /* --- battle overlay --- */
+  #battleOverlay {
+    position: fixed; inset: 0; z-index: 60;
+    display: none; flex-direction: column;
+    background: var(--cream);
+  }
+  #battleOverlay.open { display: flex; }
+  .bboard {
+    flex: 1; margin: 6px 12px 4px; overflow-y: auto;
+    border-radius: var(--r); background: #fff;
+    box-shadow: var(--shadow); padding: 12px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .bvs { text-align: center; font-size: 14.5px; font-weight: 700; }
+  .bhpname {
+    display: flex; justify-content: space-between; gap: 8px;
+    font-size: 12px; font-weight: 700;
+  }
+  .bhp .qbar { margin-top: 4px; }
+  .qfill.f-foe { background: linear-gradient(90deg, var(--coral), #E0506E); }
+  .bacts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .bacts .buy { width: 100%; }
+  .blog {
+    flex: 1; min-height: 90px; overflow-y: auto;
+    background: var(--cream); border-radius: 12px;
+    padding: 8px 10px; font-size: 12px; font-weight: 700; line-height: 1.6;
+  }
+
   /* --- nav --- */
   nav {
     position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
@@ -640,6 +668,46 @@
         <div class="muted" style="margin-top:6px">Взрослый питомец <b>30 уровня</b> уходит в Зал Славу навсегда: коллекция, монеты, 💎 и комната остаются, приходит новое яйцо с <b>+10% XP</b> на все будущие поколения.</div>
       </div>
     </section>
+
+    <!-- BATTLE -->
+    <section class="view" id="view-battle">
+      <div class="card">
+        <h2>🕳 Подземелье</h2>
+        <div class="strow"><span>Глубина</span><span class="v" id="dnFloor">—</span></div>
+        <div class="strow"><span>Побед в боях</span><span class="v" id="dnWins">—</span></div>
+        <div class="muted" id="dnHint" style="margin-top:6px"></div>
+        <button class="copybtn" id="dnBtn" style="margin-top:10px">⚔️ В бой</button>
+      </div>
+      <div class="card">
+        <h2>🏟 Арена</h2>
+        <div style="text-align:center;margin:2px 0 8px">
+          <span style="font-size:26px;font-weight:700;color:var(--coral)">★ <span id="arRating">0</span></span>
+        </div>
+        <div class="strow"><span>Победы / поражения</span><span class="v" id="arWL">—</span></div>
+        <div class="strow"><span>Бои сегодня</span><span class="v" id="arFights">—</span></div>
+        <div class="muted" id="arHint" style="margin-top:6px"></div>
+        <div id="arCandidates" style="margin-top:8px"></div>
+        <h2 style="margin-top:12px">🏆 Топ-10 арены</h2>
+        <div id="arenaTopList" class="muted">Загрузка…</div>
+      </div>
+      <div class="card">
+        <h2>🎒 Экспедиции</h2>
+        <div id="expList"></div>
+        <div id="expActive" hidden style="margin-top:10px">
+          <div class="qrow">
+            <div class="qt"><span id="expActiveTitle">—</span><span class="qr" id="expLeft">—</span></div>
+          </div>
+          <button class="copybtn" id="expCollect" style="margin-top:8px">Собрать</button>
+        </div>
+      </div>
+      <div class="card">
+        <h2>🛡 Экипировка · <span id="gearCoins">0</span>🪙</h2>
+        <div class="muted" id="gearWorn"></div>
+        <div id="gearList" style="margin-top:6px"></div>
+        <div class="muted" style="margin-top:10px"><b>🛒 Лавка снаряжения</b></div>
+        <div id="gearShopList"></div>
+      </div>
+    </section>
   </main>
 
   <nav>
@@ -648,6 +716,7 @@
     <button class="tab" onclick="showTab('shop', this)"><span class="tico">📦</span>Кейсы</button>
     <button class="tab" onclick="showTab('friends', this)"><span class="tico">🎁</span>Друзья</button>
     <button class="tab" onclick="showTab('stats', this)"><span class="tico">👤</span>Профиль</button>
+    <button class="tab" onclick="showTab('battle', this)"><span class="tico">⚔️</span>Бой</button>
   </nav>
 
   <!-- fullscreen game overlay -->
@@ -667,6 +736,37 @@
       </div>
     </div>
     <div class="ghint" id="gHint"></div>
+  </div>
+
+  <!-- fullscreen battle overlay -->
+  <div id="battleOverlay">
+    <div class="ghud">
+      <button class="gclose" id="bClose">✕</button>
+      <div class="gtitle" id="bTitle">⚔️ Бой</div>
+      <div class="gscorechip" id="bTurn">—</div>
+      <div class="gtimechip" id="bPotChip">🧪 ×0</div>
+    </div>
+    <div class="bboard">
+      <div class="bvs" id="bVs">—</div>
+      <div class="bhp">
+        <div class="bhpname"><span>Враг</span><span id="bEnemyHp">—</span></div>
+        <div class="qbar"><div class="qfill f-foe" id="bEnemyBar" style="width:0%"></div></div>
+      </div>
+      <div class="bhp">
+        <div class="bhpname"><span id="bMyName">Питомец</span><span id="bMyHp">—</span></div>
+        <div class="qbar"><div class="qfill" id="bMyBar" style="width:0%"></div></div>
+      </div>
+      <div class="bacts">
+        <button class="buy" id="bAtk">💲 Атака</button>
+        <button class="buy" id="bSkill">✨ Скилл</button>
+        <button class="buy" id="bDef">🛡 Защита</button>
+        <button class="buy" id="bPot">🧪 Зелье</button>
+      </div>
+      <button class="copybtn" id="bFlee">🐾 Убежать</button>
+      <button class="copybtn" id="bDone" hidden>Закрыть</button>
+      <div class="blog" id="bLog"></div>
+    </div>
+    <div class="ghint" id="bHint">💲 атака · 🛡 защита снижает урон · 🧪 зелье лечит</div>
   </div>
 
   <!-- rename modal -->
@@ -737,6 +837,45 @@ var CASES_META = [
           '🐹 Хомяк','🦊 Лисёнок','🦆 Утёнок','🐼 Панда']}
 ];
 var CHEST_ACC = { crown:'👑 Корона', ring:'💍 Кольцо дружбы' };  // наряды вне магазина
+
+/* --- справочник боя (подменяется meta.battle из /api/state, см. boot) --- */
+var BATTLE = {
+  elements: {
+    fire:  { title:'Огонь', emoji:'🔥', strong:'wind' },
+    wind:  { title:'Ветер', emoji:'🌪', strong:'earth' },
+    earth: { title:'Земля', emoji:'🪨', strong:'water' },
+    water: { title:'Вода',  emoji:'💧', strong:'fire' }
+  },
+  species_element: { cat:'fire', fox:'fire', bunny:'wind', hamster:'earth',
+                     panda:'earth', dog:'earth', duck:'water', snow_leopard:'water' },
+  expeditions: [
+    { id:'yard',   title:'🚪 Во дворе',      sec:600,   coins:25,  xp:10,  desc:'прогулка у дома — быстро и безопасно',
+      drops:['🪙 монеты','🍎 немного еды'] },
+    { id:'forest', title:'🌲 Лес',           sec:3600,  coins:60,  xp:25,  desc:'час пути среди деревьев',
+      drops:['🪙 монеты','🌿 травы','🍎 еда'] },
+    { id:'cave',   title:'🕳 Пещера',        sec:10800, coins:120, xp:60,  desc:'темно, но клад лежит близко',
+      drops:['🪙 монеты','⛏ находки'] },
+    { id:'ruins',  title:'🏛 Древние руины', sec:28800, coins:250, xp:150, desc:'долгий поход за настоящими сокровищами',
+      drops:['🪙 монеты','💎 самоцветы','⚔️ снаряжение'] }
+  ],
+  gear: [
+    { id:'sword_rusty',    slot:'weapon', title:'🗡 Ржавый меч',       price:80, atk:4,  up_cost:[60,120] },
+    { id:'sword_iron',     slot:'weapon', title:'⚔️ Стальной меч',     price:0, drop_only:true, atk:8,  up_cost:[100,200] },
+    { id:'sword_flame',    slot:'weapon', title:'🔥 Огненный клинок',  price:0, drop_only:true, atk:12, element:'fire', up_cost:[180,360] },
+    { id:'amulet_leather', slot:'amulet', title:'📿 Кожаный амулет',   price:60, def:3, hp:10, up_cost:[50,100] },
+    { id:'amulet_iron',    slot:'amulet', title:'⛓ Железный амулет',   price:0, drop_only:true, def:6, hp:20, mag:3, up_cost:[90,180] },
+    { id:'amulet_crystal', slot:'amulet', title:'💠 Кристальный амулет', price:0, drop_only:true, def:9, hp:35, mag:6, up_cost:[160,320] }
+  ],
+  skills: {
+    warrior: { id:'strike',   title:'Мощный удар',      emoji:'💥', desc:'усиленный удар по врагу',      cd:3 },
+    mage:    { id:'fireball', title:'Огненный шар',     emoji:'🔮', desc:'магический залп по врагу',     cd:3 },
+    noble:   { id:'decree',   title:'Королевский указ', emoji:'👑', desc:'враг теряет ход от удивления', cd:4 }
+  },
+  arena: { min_level:3, daily_cap:10, energy_cost:10, win_coins:20, win_xp:5, candidates: [] },
+  bt_energy_cost: 12,
+  potions_max: 2,
+  daily_coin_cap: 200
+};
 
 /* --- справочники прогрессии 2.0 (подменяются meta из /api/state) --- */
 var META = {
@@ -924,6 +1063,7 @@ function render(p) {
   renderVisit(p);
   renderProgress(p);
   renderAchv(p);
+  renderBattle(p);
 }
 
 function renderShop() {
@@ -1099,7 +1239,7 @@ function handleAuthOrMissing(res) {
   return false;
 }
 
-function doAction(action, arg) {
+function doAction(action, arg, after) {
   if (!pet) return;
   var btnMap = { feed:'btnFeed', clean:'btnClean', play:'btnPlay', sleep:'btnSleep',
                  pet:'btnPet', heal:'btnHeal' };
@@ -1109,7 +1249,8 @@ function doAction(action, arg) {
     if (handleAuthOrMissing(res)) return;
     return res.json().then(function(data) {
       if (data.state) render(data.state);
-      if (data.message) {
+      if (after) after(data);  // бой: сообщения уходят в лог оверлея
+      else if (data.message) {
         bubble(data.message);
         // вне домашнего экрана пузырь не виден — дублируем тостом
         if (arg || !$('view-home').classList.contains('active')) toast(data.message);
@@ -1158,6 +1299,13 @@ function showTab(name, el) {
   document.querySelectorAll('.view').forEach(function(v) { v.classList.remove('active'); });
   $('view-' + name).classList.add('active');
   if (name === 'friends') loadTop();
+  if (name === 'battle') {
+    loadArenaTop();
+    startExpTicker();
+    if (pet && pet.battle) openBattleOverlay();  // продолжить незавершённый бой
+  } else {
+    stopExpTicker();
+  }
 }
 
 function initFriends() {
@@ -1802,6 +1950,363 @@ function renderAchv(p) {
   });
 }
 
+/* ==================== БОЙ ====================
+   Подземелье (пошаговый PvE), арена (async PvP + топ), экспедиции
+   (idle-таймеры) и экипировка. meta.battle может отсутствовать до
+   рестарта сервера — тогда работает fallback-справочник BATTLE. */
+
+var GEAR_MAX_LEVEL = 3;
+var GEAR_ICO = { weapon: '⚔️', amulet: '📿' };
+var EXP_ICO = { yard: '🚪', forest: '🌲', cave: '🕳', ruins: '🏛' };
+
+function battleMeta() { return META.battle || BATTLE; }
+
+function gearById(id) {
+  return (battleMeta().gear || []).filter(function(g) { return g.id === id; })[0] || null;
+}
+
+function gearStatStr(g) {
+  var parts = [];
+  if (g.atk) parts.push('⚔ +' + g.atk);
+  if (g.def) parts.push('🛡 +' + g.def);
+  if (g.hp) parts.push('❤ +' + g.hp);
+  if (g.mag) parts.push('✨ +' + g.mag);
+  if (g.element) {
+    var el = (battleMeta().elements[g.element] || {}).emoji || '';
+    if (el) parts.push(el + ' стихия');
+  }
+  return parts.join(' · ') || '—';
+}
+
+/* длительность из meta: «10 мин», «1 ч», «3 ч», «8 ч» */
+function humanDur(sec) {
+  sec = sec || 0;
+  if (sec >= 3600 && sec % 3600 === 0) return (sec / 3600) + ' ч';
+  if (sec >= 60 && sec % 60 === 0) return (sec / 60) + ' мин';
+  return Math.max(1, Math.round(sec / 60)) + ' мин';
+}
+
+/* живой остаток: «1 ч 5 мин», «4 мин 20 с», «45 с» */
+function humanLeft(sec) {
+  sec = Math.max(0, Math.ceil(sec));
+  var h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+  if (h) return h + ' ч ' + m + ' мин';
+  if (m) return m + ' мин ' + s + ' с';
+  return s + ' с';
+}
+
+function renderBattle(p) {
+  renderDungeon(p);
+  renderArena(p);
+  renderExpeditions(p);
+  renderGear(p);
+  renderBattleHud();
+}
+
+function renderDungeon(p) {
+  var BM = battleMeta();
+  $('dnFloor').textContent = 'этаж ' + (p.dungeon_floor || 0);
+  $('dnWins').textContent = p.battle_wins || 0;
+  $('dnHint').textContent = 'Пошаговый бой: 💲 атака, 🛡 защита, 🧪 зелье. ' +
+    'Каждый бой: −' + (BM.bt_energy_cost || 12) + '⚡. Глубже — враги сильнее, добыча богаче.';
+  var btn = $('dnBtn');
+  if (p.battle) {
+    btn.textContent = 'Продолжить бой';
+    btn.onclick = openBattleOverlay;
+  } else {
+    btn.textContent = '⚔️ В бой';
+    btn.onclick = function() { doAction('battle_start', '', afterBattleStart); };
+  }
+}
+
+function renderArena(p) {
+  var am = battleMeta().arena || {};
+  var a = p.arena || {};
+  $('arRating').textContent = a.rating || 0;
+  $('arWL').textContent = (a.wins || 0) + ' / ' + (a.losses || 0);
+  $('arFights').textContent = (a.fights_today || 0) + '/' + (am.daily_cap || 10);
+  var minLv = am.min_level || 3;
+  var locked = (p.level || 0) < minLv;
+  var capOver = (a.fights_today || 0) >= (am.daily_cap || 10);
+  var noEnergy = (p.energy || 0) < (am.energy_cost || 10);
+  var hint;
+  if (locked) hint = 'Арена с уровня ' + minLv + ' — расти! 🌱';
+  else if (capOver) hint = 'Лимит боёв на сегодня исчерпан — приходи завтра 🌙';
+  else if (noEnergy) hint = 'Мало энергии ⚡ — отдохни и возвращайся';
+  else hint = 'Бой: −' + (am.energy_cost || 10) + '⚡ · победа: +' +
+    (am.win_coins || 20) + '🪙 / +' + (am.win_xp || 5) + '✨';
+  $('arHint').textContent = hint;
+  var box = $('arCandidates');
+  box.innerHTML = '';
+  var cands = (am.candidates || []).slice(0, 3);
+  if (!cands.length) box.innerHTML = '<div class="muted">Соперники ещё не найдены 🔍</div>';
+  cands.forEach(function(c) {
+    var btn = document.createElement('button');
+    btn.className = 'buy';
+    btn.style.display = 'block';
+    btn.style.width = '100%';
+    btn.style.marginTop = '6px';
+    btn.textContent = '⚔️ vs ' + c.name + ' (ур. ' + (c.lv || 0) + ', ★' + (c.rating || 0) + ')';
+    btn.disabled = locked || capOver || noEnergy;
+    btn.onclick = function() { doAction('arena_fight', String(c.user_id)); };
+    box.appendChild(btn);
+  });
+}
+
+function renderExpeditions(p) {
+  var box = $('expList');
+  box.innerHTML = '';
+  var act = p.expedition;
+  (battleMeta().expeditions || []).forEach(function(e) {
+    var row = document.createElement('div');
+    row.className = 'gamerow';
+    row.innerHTML =
+      '<div class="gico">' + (EXP_ICO[e.id] || '🗺') + '</div>' +
+      '<div class="info"><div class="gt">' + e.title + '</div>' +
+      '<div class="gd">' + (e.desc || '') + '</div>' +
+      '<div class="gchips"><span class="chip">⏱ ' + humanDur(e.sec) + '</span>' +
+      '<span class="chip">🪙 ' + (e.coins || 0) + '</span>' +
+      '<span class="chip">✨ ' + (e.xp || 0) + '</span></div></div>';
+    var btn = document.createElement('button');
+    btn.className = 'buy';
+    btn.textContent = 'Идти';
+    btn.disabled = !!act || p.stage === 0 || p.sleeping;
+    btn.onclick = function() { doAction('expedition_start', e.id); };
+    row.appendChild(btn);
+    box.appendChild(row);
+  });
+  var ab = $('expActive');
+  if (!act) { ab.hidden = true; return; }
+  var em = (battleMeta().expeditions || []).filter(function(x) { return x.id === act.id; })[0] || {};
+  ab.hidden = false;
+  $('expActiveTitle').textContent = em.title || act.title || 'Экспедиция';
+  updateExpCountdown();
+}
+
+function renderGear(p) {
+  var gear = p.gear || {};
+  var owned = gear.owned || [];
+  var levels = gear.levels || {};
+  var worn = gear.worn || {};
+  $('gearCoins').textContent = p.coins;
+  var wornParts = [];
+  ['weapon', 'amulet'].forEach(function(slot) {
+    var g = worn[slot] ? gearById(worn[slot]) : null;
+    wornParts.push((GEAR_ICO[slot] || '') + ' ' + (g ? g.title : 'пусто'));
+  });
+  $('gearWorn').textContent = 'Надето: ' + wornParts.join(' · ');
+  var box = $('gearList');
+  box.innerHTML = '';
+  if (!owned.length) {
+    box.innerHTML = '<div class="muted">Пока ничего нет — купи клинок в лавке ниже или выбей в подземелье ⚔️</div>';
+  }
+  owned.forEach(function(gid) {
+    var g = gearById(gid);
+    if (!g) return;
+    var lvl = levels[gid] || 1;
+    var isWorn = Object.keys(worn).some(function(s) { return worn[s] === gid; });
+    var row = document.createElement('div');
+    row.className = 'shoprow';
+    row.innerHTML =
+      '<div class="sico">' + (GEAR_ICO[g.slot] || '⚔️') + '</div>' +
+      '<div class="info"><div class="t">' + g.title + ' · ур. ' + lvl + '</div>' +
+      '<div class="d">' + gearStatStr(g) + '</div></div>';
+    var btns = document.createElement('div');
+    btns.style.display = 'flex';
+    btns.style.flexDirection = 'column';
+    btns.style.gap = '4px';
+    var wear = document.createElement('button');
+    wear.className = 'buy' + (isWorn ? ' wear' : '');
+    if (isWorn) {
+      wear.textContent = '✅ Надето';
+      wear.disabled = true;
+    } else {
+      wear.textContent = 'Надеть';
+      wear.onclick = function() { doAction('gear_equip', gid); };
+    }
+    btns.appendChild(wear);
+    var up = document.createElement('button');
+    up.className = 'buy';
+    var cost = (g.up_cost || [])[lvl - 1];
+    if (lvl >= GEAR_MAX_LEVEL || !cost) {
+      up.textContent = 'MAX';
+      up.disabled = true;
+    } else {
+      up.textContent = '⬆ Апгрейд (' + cost + '🪙)';
+      up.disabled = p.coins < cost;
+      up.onclick = function() { doAction('gear_up', gid); };
+    }
+    btns.appendChild(up);
+    row.appendChild(btns);
+    box.appendChild(row);
+  });
+  var shop = $('gearShopList');
+  shop.innerHTML = '';
+  (battleMeta().gear || []).forEach(function(g) {
+    if (!g.price || owned.indexOf(g.id) >= 0) return;
+    var row = document.createElement('div');
+    row.className = 'shoprow';
+    row.innerHTML =
+      '<div class="sico">' + (GEAR_ICO[g.slot] || '⚔️') + '</div>' +
+      '<div class="info"><div class="t">' + g.title + '</div>' +
+      '<div class="d">' + gearStatStr(g) + '</div></div>';
+    var btn = document.createElement('button');
+    btn.className = 'buy';
+    btn.textContent = 'Купить (' + g.price + '🪙)';
+    btn.disabled = p.coins < g.price;
+    btn.onclick = function() { doAction('gear_buy', g.id); };
+    row.appendChild(btn);
+    shop.appendChild(row);
+  });
+  if (!shop.children.length) {
+    shop.innerHTML = '<div class="muted">Лавка пуста — всё скуплено ✅</div>';
+  }
+}
+
+/* --- оверлей боя: HUD обновляется точечно, лог живёт между рендерами --- */
+function renderBattleHud() {
+  if (!$('battleOverlay').classList.contains('open')) return;
+  var b = pet && pet.battle;
+  var btns = [$('bAtk'), $('bSkill'), $('bDef'), $('bPot'), $('bFlee')];
+  $('bDone').hidden = !!b;
+  $('bMyName').textContent = pet ? pet.name : 'Питомец';
+  if (!b) {
+    btns.forEach(function(x) { x.disabled = true; });
+    $('bVs').textContent = 'Бой завершён';
+    $('bEnemyHp').textContent = '—';
+    $('bMyHp').textContent = '—';
+    $('bEnemyBar').style.width = '0%';
+    $('bMyBar').style.width = '0%';
+    $('bTurn').textContent = '—';
+    $('bPotChip').textContent = '🧪 ×0';
+    return;
+  }
+  var BM = battleMeta();
+  var ee = (BM.elements[b.enemy_element] || {}).emoji || '❔';
+  var me = (BM.elements[b.my_element] || {}).emoji || '🐾';
+  $('bVs').textContent = (b.boss ? '👑 ' : '') + b.enemy_title + ' ' + ee + ' vs ' + me;
+  $('bEnemyHp').textContent = b.enemy_hp + '/' + b.enemy_max;
+  $('bEnemyBar').style.width =
+    Math.max(0, Math.min(100, Math.round(b.enemy_hp / (b.enemy_max || 1) * 100))) + '%';
+  $('bMyHp').textContent = b.hp + '/' + b.max;
+  $('bMyBar').style.width =
+    Math.max(0, Math.min(100, Math.round(b.hp / (b.max || 1) * 100))) + '%';
+  $('bTurn').textContent = 'Ход ' + b.turn;
+  $('bPotChip').textContent = '🧪 ×' + (b.potions_left || 0);
+  $('bTitle').textContent = '⚔️ Бой · этаж ' + (b.floor || 0);
+  $('bAtk').disabled = false;
+  $('bDef').disabled = false;
+  $('bFlee').disabled = false;
+  $('bPot').disabled = (b.potions_left || 0) <= 0;
+  var sk = b.skill;
+  var sb = $('bSkill');
+  if (!sk) { sb.textContent = '✨ Скилл'; sb.disabled = true; }
+  else if ((b.skill_cd || 0) > 0) { sb.textContent = '⏳ ' + b.skill_cd; sb.disabled = true; }
+  else { sb.textContent = (sk.emoji || '✨') + ' ' + sk.title; sb.disabled = false; }
+}
+
+function openBattleOverlay() {
+  $('battleOverlay').classList.add('open');
+  renderBattleHud();
+}
+
+function closeBattleOverlay() {
+  $('battleOverlay').classList.remove('open');
+}
+
+function battleLogClear() { $('bLog').innerHTML = ''; }
+
+function battleLogAppend(msg) {
+  if (!msg) return;
+  var log = $('bLog');
+  String(msg).split('\n').forEach(function(line) {
+    var d = document.createElement('div');
+    d.textContent = line;
+    log.appendChild(d);
+  });
+  log.scrollTop = log.scrollHeight;  // автопрокрутка к свежей строке
+}
+
+/* колбэки doAction для боевых действий (сообщения — в лог оверлея) */
+function afterBattleStart(data) {
+  if (pet && pet.battle) {
+    battleLogClear();
+    if (data.message) battleLogAppend(data.message);
+    openBattleOverlay();
+  } else if (data.message) {
+    toast(data.message);  // бой не начался — показываем отказ как обычно
+  }
+}
+
+function afterBattleMove(data) {
+  if (data.message) battleLogAppend(data.message);
+  if (!pet || !pet.battle) hap('success');  // бой закончился — «Закрыть» уже показана
+}
+
+function afterBattleFlee(data) {
+  if (data.message) battleLogAppend(data.message);
+  if (pet && pet.battle) return;  // убежать не удалось — бой продолжается
+  if (data.message) toast(data.message);
+  closeBattleOverlay();
+}
+
+/* --- экспедиция: тикает раз в секунду, пока открыта вкладка «Бой» --- */
+var expTimer = null;
+
+function startExpTicker() {
+  stopExpTicker();
+  expTimer = setInterval(updateExpCountdown, 1000);
+  updateExpCountdown();
+}
+
+function stopExpTicker() {
+  if (expTimer) { clearInterval(expTimer); expTimer = null; }
+}
+
+function updateExpCountdown() {
+  var el = $('expLeft');
+  if (!el || !pet || !pet.expedition) return;
+  var left = (pet.expedition.ends_at || 0) - Math.floor(Date.now() / 1000);
+  el.textContent = left > 0 ? ('⏳ ' + humanLeft(left)) : '✅ можно забирать!';
+  var btn = $('expCollect');
+  if (btn) btn.disabled = left > 0;
+}
+
+/* --- топ арены: тот же паттерн, что loadTop --- */
+function loadArenaTop() {
+  fetch('/api/arena_top?initData=' + encodeURIComponent(INIT)).then(function(r) { return r.json(); })
+    .then(function(res) {
+      var box = $('arenaTopList');
+      var rows = res.rows || [];
+      if (!rows.length) { box.classList.add('muted'); box.textContent = 'Пока пусто'; return; }
+      var medals = ['🥇', '🥈', '🥉'];
+      box.classList.remove('muted');
+      box.innerHTML = '';
+      rows.forEach(function(row, i) {
+        var div = document.createElement('div');
+        div.className = 'toprow';
+        div.innerHTML =
+          '<span class="medal">' + (medals[i] || (i + 1) + '.') + '</span>' +
+          '<span class="nm">' + row.name + '</span>' +
+          '<span class="stg">' + speciesMeta(row.species).title.split(' ')[0] +
+          ' · ур. ' + (row.lv || 0) + '</span>' +
+          '<span class="pts">★ ' + (row.rating || 0) + '</span>';
+        box.appendChild(div);
+      });
+    }).catch(function() { $('arenaTopList').textContent = 'Нет связи 😿'; });
+}
+
+(function initBattleUi() {
+  $('bClose').onclick = closeBattleOverlay;
+  $('bDone').onclick = closeBattleOverlay;
+  $('bAtk').onclick = function() { doAction('battle_move', 'atk', afterBattleMove); };
+  $('bSkill').onclick = function() { doAction('battle_move', 'skill', afterBattleMove); };
+  $('bDef').onclick = function() { doAction('battle_move', 'def', afterBattleMove); };
+  $('bPot').onclick = function() { doAction('battle_move', 'potion', afterBattleMove); };
+  $('bFlee').onclick = function() { doAction('battle_flee', '', afterBattleFlee); };
+  $('expCollect').onclick = function() { doAction('expedition_collect', ''); };
+})();
+
 function submitVisit() {
   var input = $('visitInput');
   var v = (input.value || '').trim();
@@ -1891,6 +2396,7 @@ function boot() {
       if (data.meta.daily_rewards && data.meta.daily_rewards.length) {
         META.daily_rewards = data.meta.daily_rewards;
       }
+      if (data.meta.battle && data.meta.battle.elements) META.battle = data.meta.battle;
     }
     ACHV_PROG = data.achv_progress || {};
     $('btnRename').onclick = openRename;

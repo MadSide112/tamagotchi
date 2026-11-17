@@ -14,6 +14,7 @@ import time
 from typing import Dict, Optional, Tuple
 
 from bot.api import ApiError, TelegramApi
+from game import arena
 from game import engine
 from game import progress
 from game.balance import (
@@ -272,6 +273,9 @@ class App:
                                        st.to_json(), row['warn_ts'], row['sick_warn'], now)
             if action == 'visit':
                 st, message = await self._visit(user_id, st, row, arg, now)
+                return st.web_dict(), message, reward
+            if action == 'arena_fight':
+                st, message = await self._arena_fight(user_id, st, row, arg, now)
                 return st.web_dict(), message, reward
             if action == 'promo':
                 arg = promo_normalize(arg)
@@ -586,6 +590,32 @@ class App:
                                fst.to_json(), frow['warn_ts'], frow['sick_warn'], now)
         st.rev += 1
         return st, '\n'.join(messages)
+
+    async def _arena_fight(self, user_id: int, st: PetState, row, arg: str,
+                           now: int) -> Tuple[PetState, str]:
+        """Бой на арене: соперник читается из БД read-only, рейтинг меняется
+        только у бойца. Перехват до engine.apply (как 'visit')."""
+        uid_txt = str(arg).strip()
+        if not uid_txt.isdigit():
+            return st, 'Не понял, кого вызываю 🤷'
+        opp_uid = int(uid_txt)
+        if opp_uid == user_id:
+            return st, 'С самим собой драться нельзя 🙂'
+        opp_row = await self.db.get_pet(opp_uid)
+        if not opp_row:
+            return st, 'У этого пользователя ещё нет питомца 🐣'
+        opp_st = PetState.from_json(opp_row['state'])
+        if opp_st.stage < 1:
+            return st, 'Соперник ещё в яйце 🥚'
+        st, message, changed = arena.fight(st, opp_uid, arena.snapshot_of(opp_st), now)
+        if changed:
+            progress.on_action(st, 'arena_fight')
+            for line in progress.check_achievements(st):
+                message = (message + '\n' if message else '') + line
+            st.rev += 1
+            await self.db.save_pet(user_id, row['chat_id'], row['message_id'],
+                                   st.to_json(), row['warn_ts'], row['sick_warn'], now)
+        return st, message
 
     # --- leaderboard / rename / stats ----------------------------------------
 

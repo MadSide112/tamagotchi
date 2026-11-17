@@ -4,14 +4,26 @@ from dataclasses import dataclass, field
 from typing import Dict, List
 
 from game.balance import (
+    ARENA_DAILY_CAP,
+    ARENA_RATING_FLOOR,
+    ARENA_RATING_START,
+    BT_DAILY_COIN_CAP,
+    BT_POTIONS_PER_BATTLE,
+    BT_SKILLS,
     CLASSES,
+    DUNGEON_ENEMIES,
+    EXPEDITIONS,
     FRAG_NEED,
+    GEAR,
+    GEAR_MAX_LEVEL,
+    GEAR_SLOTS,
     HIDDEN_CAP,
     LEVEL_XP_BASE,
     LEVEL_XP_STEP,
     MAX_LEVEL,
     MG_DAILY_COIN_CAP,
     ROOM,
+    SPECIES_ELEMENT,
 )
 from game.pets import DEFAULT_SPECIES, is_species
 
@@ -71,6 +83,22 @@ class PetState:
     quests: List[list] = field(default_factory=list)    # [id, need, prog] x3
     q_claimed: int = 0      # награда за квесты дня уже получена
     boost_until: int = 0    # unix ts: эликсир ×2 XP активен до
+    # --- Боевая система ---
+    df: int = 0             # глубочайший взятый этаж подземелья
+    bt: Dict = None         # активная сессия боя (None = боя нет)
+    bw: int = 0             # побед в подземелье за всё время
+    bd: str = ''            # UTC-день дневного капа монет из боёв
+    bc: int = 0             # монеты из боёв за этот день
+    ar: int = ARENA_RATING_START  # рейтинг арены
+    aw: int = 0             # побед на арене
+    al: int = 0             # поражений на арене
+    ad: str = ''            # UTC-день дневного капа арены
+    an: int = 0             # боёв на арене за этот день
+    ex: Dict = None         # активная экспедиция {'i': id, 's': unix ts старта}
+    ec: int = 0             # экспедиций собрано за всё время
+    gi: List[str] = field(default_factory=list)       # экипировка: полученные id
+    gl: Dict[str, int] = field(default_factory=dict)  # уровни предметов 1..GEAR_MAX_LEVEL
+    gw: Dict[str, str] = field(default_factory=dict)  # надето: слот -> id предмета
 
     @staticmethod
     def create(name: str, now: int, start_coins: float = 0.0,
@@ -134,6 +162,22 @@ class PetState:
             'ql': self.quests,
             'qc': self.q_claimed,
             'bu': self.boost_until,
+            # --- battle system ---
+            'df': self.df,
+            'bt': dict(self.bt) if self.bt else None,
+            'bw': self.bw,
+            'bd': self.bd,
+            'bc': self.bc,
+            'ar': self.ar,
+            'aw': self.aw,
+            'al': self.al,
+            'ad': self.ad,
+            'an': self.an,
+            'ex': dict(self.ex) if self.ex else None,
+            'ec': self.ec,
+            'gi': list(self.gi),
+            'gl': dict(self.gl),
+            'gw': dict(self.gw),
         }
 
     def public_dict(self) -> dict:
@@ -153,6 +197,34 @@ class PetState:
 
     def web_dict(self) -> dict:
         """Full state for the authenticated Mini App API (web UI only)."""
+        # Вью боя собирается здесь из таблиц balance (state не может импортировать
+        # game.gear — см. circular-import правило; таблицы balance ни от кого не зависят).
+        bt = self.bt
+        battle = None
+        if bt:
+            enemy = DUNGEON_ENEMIES.get(bt.get('et', ''), DUNGEON_ENEMIES['slime'])
+            skill = BT_SKILLS.get(self.cls)
+            weapon = GEAR.get(self.gw.get('weapon', ''))
+            battle = {
+                'mode': bt.get('m', 'dungeon'),
+                'floor': bt.get('ef', 1),
+                'boss': bt.get('ef', 1) % 5 == 0,
+                'enemy_id': bt.get('et', ''),
+                'enemy_title': enemy['title'],
+                'enemy_element': enemy['element'],
+                'enemy_hp': bt.get('eh', 0),
+                'enemy_max': bt.get('ehm', 0),
+                'hp': bt.get('ph', 0),
+                'max': bt.get('phm', 0),
+                'turn': bt.get('tn', 0),
+                'potions_left': max(0, BT_POTIONS_PER_BATTLE - bt.get('pu', 0)),
+                'potions_max': BT_POTIONS_PER_BATTLE,
+                'skill_cd': bt.get('sc', 0),
+                'skill': None if skill is None else {
+                    'id': skill['id'], 'title': skill['title'],
+                    'emoji': skill['emoji'], 'desc': skill['desc']},
+                'my_element': weapon.get('element') or SPECIES_ELEMENT.get(self.species, 'fire'),
+            }
         return {
             'rev': self.rev,
             'name': self.name,
@@ -198,6 +270,19 @@ class PetState:
             'quests': [list(q) for q in self.quests],
             'q_claimed': self.q_claimed,
             'boost_until': self.boost_until,
+            # --- battle system ---
+            'battle': battle,
+            'dungeon_floor': self.df,
+            'battle_wins': self.bw,
+            'arena': {'rating': self.ar, 'wins': self.aw, 'losses': self.al,
+                      'fights_today': self.an, 'daily_cap': ARENA_DAILY_CAP},
+            'expedition': ({'id': self.ex['i'],
+                            'title': EXPEDITIONS[self.ex['i']]['title'],
+                            'ends_at': self.ex['s'] + EXPEDITIONS[self.ex['i']]['sec'],
+                            'sec': EXPEDITIONS[self.ex['i']]['sec']}
+                           if self.ex and self.ex.get('i') in EXPEDITIONS else None),
+            'expeditions_done': self.ec,
+            'gear': {'owned': list(self.gi), 'levels': dict(self.gl), 'worn': dict(self.gw)},
         }
 
     def to_json(self) -> str:
@@ -299,6 +384,61 @@ class PetState:
         if cls_in not in CLASSES:
             cls_in = ''
 
+        # --- Боевая система: строгая валидация сессий и инвентаря gear ---
+        bt_raw = d.get('bt') if isinstance(d.get('bt'), dict) else None
+        clean_bt: Dict = None
+        if bt_raw is not None:
+            enemy_id = str(bt_raw.get('et', ''))[:16]
+            if enemy_id in DUNGEON_ENEMIES:
+                try:
+                    clean_bt = {
+                        'm': 'dungeon',
+                        'ef': max(1, min(999, int(bt_raw.get('ef', 1)))),
+                        'et': enemy_id,
+                        'eh': max(0, min(99999, int(bt_raw.get('eh', 0)))),
+                        'ehm': max(1, min(99999, int(bt_raw.get('ehm', 1)))),
+                        'ph': max(0, min(99999, int(bt_raw.get('ph', 0)))),
+                        'phm': max(1, min(99999, int(bt_raw.get('phm', 1)))),
+                        'tn': max(0, min(999, int(bt_raw.get('tn', 0)))),
+                        'pu': max(0, min(BT_POTIONS_PER_BATTLE, int(bt_raw.get('pu', 0)))),
+                        'sc': max(0, min(99, int(bt_raw.get('sc', 0)))),
+                        'es': 1 if bt_raw.get('es', 0) else 0,
+                        'sd': str(bt_raw.get('sd', ''))[:16],
+                        'ts': max(0, min(4_000_000_000, int(bt_raw.get('ts', 0)))),
+                    }
+                except (TypeError, ValueError):
+                    clean_bt = None
+        ex_raw = d.get('ex') if isinstance(d.get('ex'), dict) else None
+        clean_ex: Dict = None
+        if ex_raw is not None:
+            ex_id = str(ex_raw.get('i', ''))[:16]
+            if ex_id in EXPEDITIONS:
+                try:
+                    clean_ex = {'i': ex_id,
+                                's': max(0, min(4_000_000_000, int(ex_raw.get('s', 0))))}
+                except (TypeError, ValueError):
+                    clean_ex = None
+        clean_gi: List[str] = []
+        for g in (d.get('gi') if isinstance(d.get('gi'), list) else []):
+            g = str(g)[:16]
+            if g in GEAR and g not in clean_gi:
+                clean_gi.append(g)
+        clean_gi = clean_gi[:16]
+        clean_gl: Dict[str, int] = {}
+        for k, lvl in (d.get('gl') if isinstance(d.get('gl'), dict) else {}).items():
+            k = str(k)[:16]
+            if k not in GEAR:
+                continue
+            try:
+                clean_gl[k] = max(1, min(GEAR_MAX_LEVEL, int(lvl)))
+            except (TypeError, ValueError):
+                continue
+        clean_gw: Dict[str, str] = {}
+        for slot, gid in (d.get('gw') if isinstance(d.get('gw'), dict) else {}).items():
+            slot, gid = str(slot)[:12], str(gid)[:16]
+            if slot in GEAR_SLOTS and gid in GEAR and GEAR[gid]['slot'] == slot:
+                clean_gw[slot] = gid
+
         return PetState(
             rev=max(1, int_or('r', 1)),
             name=str(d.get('n', 'Пуся'))[:32],
@@ -352,6 +492,22 @@ class PetState:
             quests=clean_quests,
             q_claimed=1 if d.get('qc', 0) else 0,
             boost_until=max(0, min(int_or('bu', 0), 4_000_000_000)),
+            # --- battle system ---
+            df=max(0, min(999, int_or('df', 0))),
+            bt=clean_bt,
+            bw=max(0, min(int_or('bw', 0), 1_000_000)),
+            bd=str(d.get('bd', ''))[:10],
+            bc=max(0, min(int_or('bc', 0), BT_DAILY_COIN_CAP)),
+            ar=max(ARENA_RATING_FLOOR, min(int_or('ar', ARENA_RATING_START), 4000)),
+            aw=max(0, min(int_or('aw', 0), 1_000_000)),
+            al=max(0, min(int_or('al', 0), 1_000_000)),
+            ad=str(d.get('ad', ''))[:10],
+            an=max(0, min(int_or('an', 0), 99)),
+            ex=clean_ex,
+            ec=max(0, min(int_or('ec', 0), 1_000_000)),
+            gi=clean_gi,
+            gl=clean_gl,
+            gw=clean_gw,
         )
 
     @staticmethod

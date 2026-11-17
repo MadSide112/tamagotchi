@@ -29,6 +29,13 @@ from game.balance import (
 from game.pets import SPECIES
 from game.state import PetState
 
+# боевые квесты (Подземелье / Арена / Экспедиции)
+QUEST_POOL = QUEST_POOL + (
+    {'id': 'fight3', 'act': 'battle_start', 'need': 3, 'reward': 20, 'title': 'Провести 3 боя'},
+    {'id': 'arena1', 'act': 'arena_fight', 'need': 1, 'reward': 20, 'title': 'Бой на арене'},
+    {'id': 'exp1', 'act': 'expedition_start', 'need': 1, 'reward': 15, 'title': 'Отправить в экспедицию'},
+)
+
 
 def day_of(now: int) -> str:
     return time.strftime('%Y-%m-%d', time.gmtime(now))
@@ -149,6 +156,12 @@ ACHIEVEMENTS: List[dict] = [
      'gems': 40, 'target': 1, 'get': lambda st: len(st.hall)},
     {'id': 'care100', 'title': 'Забота', 'desc': '100 очков заботы', 'gems': 20,
      'target': 100, 'get': lambda st: st.care_score},
+    {'id': 'floor5',  'title': 'Спелеолог 🕳',        'desc': 'Этаж 5 подземелья',        'gems': 3, 'target': 5,    'get': lambda st: st.df},
+    {'id': 'floor15', 'title': 'Покоритель глубин ⛏', 'desc': 'Этаж 15 подземелья',       'gems': 5, 'target': 15,   'get': lambda st: st.df},
+    {'id': 'aw25',    'title': 'Гладиатор ⚔️',        'desc': '25 побед на арене',        'gems': 4, 'target': 25,   'get': lambda st: st.aw},
+    {'id': 'rt1400',  'title': 'Звезда арены ⭐',     'desc': 'Рейтинг арены 1400',       'gems': 5, 'target': 1400, 'get': lambda st: st.ar},
+    {'id': 'exp10',   'title': 'Первопроходец 🧭',    'desc': '10 собранных экспедиций',  'gems': 3, 'target': 10,   'get': lambda st: st.ec},
+    {'id': 'gear3',   'title': 'Оружейник 🛡',        'desc': '3 предмета экипировки',    'gems': 3, 'target': 3,    'get': lambda st: len(st.gi)},
 ]
 
 

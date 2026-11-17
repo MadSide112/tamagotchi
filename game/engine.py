@@ -67,6 +67,9 @@ from game.balance import (
     XP_GRANTS,
     ZONE_PLAY_MOOD_PER_LEVEL,
 )
+from game import battle
+from game import expeditions
+from game import gear
 from game import minigames
 from game import progress
 from game.cases import CASES, CHEST_ACC_TITLES, apply_drop, roll
@@ -77,7 +80,10 @@ from game.state import PetState
 ACTIONS = frozenset({'sync', 'feed', 'play', 'sleep', 'pet', 'clean', 'heal',
                      'buy', 'wear', 'open_case', 'setpet', 'promo',
                      'game_start', 'game_end', 'quest_claim', 'collect_tree',
-                     'prestige', 'visit', 'rename'})
+                     'prestige', 'visit', 'rename',
+                     'battle_start', 'battle_move', 'battle_flee',
+                     'expedition_start', 'expedition_collect',
+                     'gear_buy', 'gear_equip', 'gear_up', 'arena_fight'})
 
 
 def _clamp(v: float) -> float:
@@ -387,6 +393,25 @@ def _apply_core(st: PetState, action: str, arg: str,
 
     if action == 'rename':
         return _apply_rename(st, arg)
+
+    # --- боевая система ---
+    if action == 'battle_start':
+        return battle.battle_start(st, arg, now)
+    if action == 'battle_move':
+        return battle.battle_move(st, arg, now)
+    if action == 'battle_flee':
+        return battle.battle_flee(st, arg, now)
+    if action == 'expedition_start':
+        return expeditions.expedition_start(st, arg, now)
+    if action == 'expedition_collect':
+        return expeditions.expedition_collect(st, arg, now)
+    if action == 'gear_buy':
+        return gear.gear_buy(st, arg, now)
+    if action == 'gear_equip':
+        return gear.gear_equip(st, arg, now)
+    if action == 'gear_up':
+        return gear.gear_up(st, arg, now)
+    # arena_fight перехватывается в handlers.web_action (нужен соперник из БД)
 
     return st, 'Не понимаю 🤔', False
 
