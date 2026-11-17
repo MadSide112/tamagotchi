@@ -143,21 +143,22 @@
     box-shadow: var(--shadow); background: var(--cream);
   }
   .room > .roomimg { width: 100%; display: block; }
-  /* кот сидит на ковре по центру комнаты, неподвижно */
+  /* кот сидит на ковре (центр ковра ~67%) поверх спрайтов комнаты */
   .petwrap {
-    position: absolute; left: 63%; bottom: 4%; transform: translateX(-50%);
-    width: 40%;
+    position: absolute; left: 66%; bottom: 4%; transform: translateX(-50%);
+    width: 40%; z-index: 2;
   }
   .petwrap.sleeping { filter: brightness(.85) saturate(.8); }
   .petbase { width: 100%; display: block; }
-  /* спрайты улучшений комнаты — свой ассет на каждый уровень */
-  .roomitems { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+  /* спрайты улучшений комнаты — свой ассет на каждый уровень;
+     расставлены по стенке нового фона room.png (пол = нижние ~19%) */
+  .roomitems { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
   .ritem { position: absolute; image-rendering: pixelated;
            filter: drop-shadow(0 2px 3px rgba(40, 20, 80, .35)); }
-  .ritem.r-bowl { left: 8%;  bottom: 4%; width: 14%; }
-  .ritem.r-zone { left: 28%; bottom: 2%; width: 17%; }
-  .ritem.r-tree { left: 44%; bottom: 4%; width: 13%; }
-  .ritem.r-bed  { left: 76%; bottom: 2%; width: 17%; }
+  .ritem.r-bowl { left: 6%;    bottom: 4%; width: 13%; }
+  .ritem.r-zone { left: 22.5%; bottom: 2%; width: 15%; }
+  .ritem.r-tree { left: 38.5%; bottom: 4%; width: 12%; }
+  .ritem.r-bed  { left: 84%;   bottom: 2%; width: 16%; }
   /* рамка со «эмоцией» — правый верхний угол комнаты */
   .petstatus {
     position: absolute; top: 10px; right: 10px; z-index: 3;
@@ -518,7 +519,7 @@
     <!-- HOME -->
     <section class="view active" id="view-home">
       <div class="room">
-        <img class="roomimg" src="/assets/room.png" alt="">
+        <img class="roomimg" src="/assets/room.png?v=2" alt="">
         <div class="egg" id="eggBox" hidden>🥚</div>
         <div class="petwrap" id="petWrap" hidden>
           <img class="petbase" id="petBase" src="/assets/pet.png" alt="">
