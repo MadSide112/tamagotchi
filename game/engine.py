@@ -9,7 +9,7 @@ ugly adult branch.
 """
 import random
 import time
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from game.balance import (
     ADULT_AFTER_DAYS,
@@ -30,6 +30,8 @@ from game.balance import (
     MAX_OFFLINE_SECONDS,
     MOOD_DECAY_PER_HOUR,
     MOOD_EXTRA_DECAY_PER_HOUR,
+    NIGHT_END_HOUR,
+    NIGHT_START_HOUR,
     PET_COOLDOWN_SECONDS,
     PET_MOOD_GAIN,
     PLAY_ENERGY_COST,
@@ -82,8 +84,36 @@ def _clamp(v: float) -> float:
     return max(0.0, min(100.0, v))
 
 
-def tick(st: PetState, now: int) -> List[str]:
+def _local_hour(now: int, tz_offset: float) -> float:
+    """Local wall-clock hour at `now` (fractional, 0..24)."""
+    return ((now + tz_offset * 3600) % 86400) / 3600.0
+
+
+def _night_hours(start: float, end: float, tz_offset: float) -> float:
+    """Hours of the interval [start, end] falling into the 23:00–07:00
+    local night window (auto sleep)."""
+    if end <= start:
+        return 0.0
+    tz_shift = tz_offset * 3600
+    first_day = int((start + tz_shift) // 86400)
+    total = 0.0
+    for day in range(first_day - 1, first_day + 3):
+        # окно: локальные 23:00 дня day -> локальные 07:00 следующего дня
+        ns = day * 86400 + NIGHT_START_HOUR * 3600 - tz_shift
+        ne = day * 86400 + (NIGHT_START_HOUR + 8) * 3600 - tz_shift
+        s = max(start, ns)
+        e = min(end, ne)
+        if e > s:
+            total += e - s
+    return total / 3600.0
+
+
+def tick(st: PetState, now: int, tz_offset: float = 0) -> List[str]:
     """Advance the pet to `now`, applying lazy decay, economy and sickness.
+
+    The pet auto-sleeps during the local night (23:00–07:00 by tz_offset,
+    hours east of UTC); auto sleep ends by itself in the morning. A manual
+    sleep (the sleep action) is never cancelled by the clock.
 
     Events: 'hungry' (every tick while hungry; the handler throttles),
     'sick' (a new sickness started), 'healed_auto' (recovered on its own,
@@ -92,10 +122,32 @@ def tick(st: PetState, now: int) -> List[str]:
     """
     events: List[str] = []
     dt = max(0, min(now - st.last_tick, MAX_OFFLINE_SECONDS))
-    if dt > 0 and st.stage != STAGE_EGG:
-        hours = dt / 3600.0
+    hours = dt / 3600.0
 
-        hunger_rate = HUNGER_DECAY_SLEEP_PER_HOUR if st.sleeping else HUNGER_DECAY_PER_HOUR
+    # сколько часов паузы питомец проспал (ночь и/или ручной сон)
+    sleep_h = 0.0
+    if st.stage != STAGE_EGG:
+        if st.sleeping and not st.auto_sleep:
+            # ручной сон длится, пока игрок не разбудит: вся пауза — сон
+            sleep_h = hours
+            st.auto_sleep = False
+        else:
+            night_h = _night_hours(now - dt, now, tz_offset)
+            if _local_hour(now, tz_offset) >= NIGHT_START_HOUR \
+                    or _local_hour(now, tz_offset) < NIGHT_END_HOUR:
+                st.sleeping = True
+                st.auto_sleep = True
+            elif st.auto_sleep:
+                # 7:00 утра — питомец просыпается сам
+                st.sleeping = False
+                st.auto_sleep = False
+            sleep_h = night_h
+
+    if dt > 0 and st.stage != STAGE_EGG:
+        awake_h = max(0.0, hours - sleep_h)
+
+        hunger_rate = (HUNGER_DECAY_PER_HOUR * awake_h
+                       + HUNGER_DECAY_SLEEP_PER_HOUR * sleep_h) / hours if hours else 0.0
         if st.cls == 'noble':
             hunger_rate *= HUNGER_DECAY_NOBLE_MULT
         prev_satiety = st.satiety
@@ -104,12 +156,11 @@ def tick(st: PetState, now: int) -> List[str]:
             st.care_miss += 1
             events.append('neglect')
 
-        if st.sleeping:
-            st.energy = _clamp(st.energy + ENERGY_REGEN_SLEEP_PER_HOUR
-                               * (1.0 + BED_REGEN_PER_LEVEL * st.room.get('bed', 0)) * hours)
-            st.coins += SLEEP_COINS_PER_HOUR * hours
-        else:
-            st.energy = _clamp(st.energy - ENERGY_DECAY_PER_HOUR * hours)
+        st.energy = _clamp(st.energy
+                           + ENERGY_REGEN_SLEEP_PER_HOUR
+                           * (1.0 + BED_REGEN_PER_LEVEL * st.room.get('bed', 0)) * sleep_h
+                           - ENERGY_DECAY_PER_HOUR * awake_h)
+        st.coins += SLEEP_COINS_PER_HOUR * sleep_h
 
         # денежное дерево: пассивный доход, копится до тапа-сбора
         tree_lvl = st.room.get('tree', 0)
@@ -179,18 +230,31 @@ def _adult_branch(st: PetState) -> int:
     return STAGE_ADULT_HOOLIGAN
 
 
-def update_streak(st: PetState, now: int) -> int:
-    """Count a daily visit. Returns the coin bonus if a new day was counted, else 0."""
-    from game.balance import STREAK_BONUS_BASE, STREAK_BONUS_CAP_DAYS, STREAK_BONUS_STEP
-    day = time.strftime('%Y-%m-%d', time.gmtime(now))
+def update_streak(st: PetState, now: int,
+                  tz_offset: float = 0) -> Optional[dict]:
+    """Count the first visit of a local day (user timezone, hours east of UTC).
+
+    Streak grants a reward from the DAILY_REWARDS table by cycle day
+    ((streak - 1) % len(DAILY_REWARDS) + 1) once per local day.
+    Returns the granted reward dict (with 'label' and 'cycle_day') or None.
+    """
+    from game.balance import DAILY_REWARDS
+    day = time.strftime('%Y-%m-%d', time.gmtime(now + tz_offset * 3600))
     if st.streak_day == day:
-        return 0
-    yesterday = time.strftime('%Y-%m-%d', time.gmtime(now - 86400))
+        return None
+    yesterday = time.strftime('%Y-%m-%d', time.gmtime(now + tz_offset * 3600 - 86400))
     st.streak = st.streak + 1 if st.streak_day == yesterday else 1
     st.streak_day = day
-    bonus = STREAK_BONUS_BASE + STREAK_BONUS_STEP * min(st.streak - 1, STREAK_BONUS_CAP_DAYS)
-    st.coins += bonus
-    return bonus
+    cycle_day = (st.streak - 1) % len(DAILY_REWARDS) + 1
+    reward = dict(DAILY_REWARDS[cycle_day - 1])
+    reward['cycle_day'] = cycle_day
+    if 'coins' in reward:
+        st.coins += reward['coins']
+    if 'item' in reward:
+        st.inv[reward['item']] = st.inv.get(reward['item'], 0) + reward.get('n', 1)
+    if 'case' in reward:
+        st.pending_case = reward['case']
+    return reward
 
 
 def best_food(st: PetState) -> str:
@@ -243,6 +307,10 @@ def _apply_core(st: PetState, action: str, arg: str,
     if action == 'sleep':
         if st.stage == STAGE_EGG:
             return st, 'Яйцу не до сна 🙂', False
+        if st.sleeping and st.auto_sleep:
+            # ночной сон (23:00–07:00) вручную не прерывается
+            return st, '🌙 %s крепко спит — проснётся в 7:00 утра.' % st.name, False
+        st.auto_sleep = False
         st.sleeping = not st.sleeping
         if st.sleeping:
             return st, '😴 %s уснул… Пока спит, ищет монетки (+%d🪙/час).' % (
@@ -401,6 +469,12 @@ def _apply_open_case(st: PetState, case_id: str) -> Tuple[PetState, str, bool]:
     case = CASES.get(case_id)
     if case is None:
         return st, 'Нет такого сундука 🤔', False
+    if st.pending_case == case_id:
+        # бесплатный сундук из ежедневной награды — цена не списывается
+        st.pending_case = ''
+        st.chests_total += 1
+        line = apply_drop(st, roll(case))
+        return st, 'Открыл %s (награда за вход): %s' % (case['title'], line), True
     currency = case.get('currency', 'coins')
     if currency == 'gems':
         if st.gems < case['price']:

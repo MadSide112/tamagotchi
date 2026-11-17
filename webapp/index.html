@@ -80,7 +80,45 @@
     flex: 1; padding: 10px 0; border: 0; border-radius: 12px;
     font: inherit; font-weight: 700; background: var(--cream); color: var(--ink);
   }
-  .rnrow button.primary { background: var(--pink); color: #fff; }
+  /* «Сохранить»: приглушена без изменений, насыщенный розовый — при изменениях */
+  .rnrow button.primary { background: var(--cream); color: var(--ink-soft); }
+  .rnrow button.primary.changed { background: #F2688C; color: #fff; }
+  .rnerr { margin-top: 6px; font-size: 12px; font-weight: 600; color: #E0506E; }
+
+  /* --- daily reward popup --- */
+  #dailyModal {
+    position: fixed; inset: 0; z-index: 80;
+    display: none; align-items: center; justify-content: center;
+    background: rgba(91, 74, 63, .4);
+  }
+  #dailyModal.open { display: flex; }
+  .dnbox {
+    background: var(--panel); border-radius: var(--r);
+    padding: 16px; width: min(340px, 90vw); box-shadow: var(--shadow);
+    text-align: center;
+  }
+  .dntitle { font-weight: 700; font-size: 16px; margin-bottom: 2px; }
+  .dnstreak { font-size: 12px; font-weight: 600; color: var(--ink-soft); margin-bottom: 12px; }
+  #dailyGrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .dcell {
+    background: var(--cream); border-radius: 10px;
+    padding: 7px 4px; font-size: 11px; line-height: 1.25;
+  }
+  .dcell .dday { font-weight: 700; color: var(--ink-soft); }
+  .dcell .drw { margin-top: 2px; }
+  .dcell.done { opacity: .45; }
+  .dcell.today {
+    background: #F2688C; color: #fff;
+    box-shadow: 0 2px 8px rgba(242, 104, 140, .45);
+  }
+  .dcell.today .dday { color: #fff; }
+  .dcell.wide { grid-column: span 2; }
+  .dnrow { margin-top: 12px; }
+  .dnrow button {
+    width: 100%; padding: 10px 0; border: 0; border-radius: 12px;
+    font: inherit; font-weight: 700; cursor: pointer;
+    background: #F2688C; color: #fff;
+  }
   .xpwrap { margin-top: 4px; display: flex; align-items: center; gap: 6px; }
   .xpbar { flex: 1; height: 10px; border-radius: 6px; background: #EFE2D2; overflow: hidden; }
   .xpfill {
@@ -151,22 +189,24 @@
     border: 8px solid transparent; border-top-color: var(--pink); border-bottom: 0;
   }
 
-  /* --- stats --- */
+  /* --- stats: компактный HUD в левом верхнем углу комнаты --- */
   .stats {
-    margin-top: 10px; background: var(--panel); border-radius: var(--r);
-    box-shadow: var(--shadow); padding: 10px 12px;
-    display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px;
+    position: absolute; top: 10px; left: 10px; z-index: 3;
+    display: grid; grid-template-columns: auto; gap: 4px;
+    justify-content: start;
   }
-  .stat { display: flex; align-items: center; gap: 6px; }
-  .stat .ico { font-size: 15px; width: 20px; text-align: center; flex: none; }
-  .sbar { flex: 1; height: 12px; border-radius: 7px; background: #EFE2D2; overflow: hidden; }
-  .sfill { height: 100%; border-radius: 7px; transition: width .5s; }
-  .f-sat  { background: #7ED49A; }
-  .f-mood { background: #C5A3F0; }
-  .f-en   { background: #8FC3EE; }
-  .f-hyg  { background: #7DD8E8; }
-  .stat .val { font-size: 11px; font-weight: 700; color: var(--ink-soft);
-               width: 34px; text-align: right; flex: none; }
+  .stat {
+    display: flex; align-items: center; gap: 3px;
+    background: rgba(255,255,255,.93); border-radius: 10px;
+    padding: 2px 6px 2px 5px; box-shadow: var(--shadow);
+  }
+  .stat .ico { font-size: 12px; line-height: 1; }
+  .stat .val { font-size: 11px; font-weight: 700; }
+  /* цвет процента повторяет прежний цвет полоски стата */
+  .f-sat  { color: #2E9E5B; }
+  .f-mood { color: #8A5BC7; }
+  .f-en   { color: #3E86C4; }
+  .f-hyg  { color: #2FA9BE; }
 
   /* --- action buttons --- */
   .actions { margin-top: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -446,15 +486,15 @@
           <img class="petbase" id="petBase" src="/assets/pet.png" alt="">
           <div id="accLayer"></div>
         </div>
+        <div class="stats">
+          <div class="stat"><span class="ico">🍗</span><span class="val f-sat" id="vSat">0%</span></div>
+          <div class="stat"><span class="ico">😊</span><span class="val f-mood" id="vMood">0%</span></div>
+          <div class="stat"><span class="ico">⚡</span><span class="val f-en" id="vEn">0%</span></div>
+          <div class="stat"><span class="ico">🫧</span><span class="val f-hyg" id="vHyg">0%</span></div>
+        </div>
         <div class="petstatus" id="petStatus" hidden><img src="/assets/face_1.png" alt="" id="petFace"></div>
         <div class="zzz" id="zzz">z z z</div>
         <div class="bubble" id="bubble"></div>
-      </div>
-      <div class="stats">
-        <div class="stat"><span class="ico">🍗</span><div class="sbar"><div class="sfill f-sat" id="bSat"></div></div><span class="val" id="vSat">0%</span></div>
-        <div class="stat"><span class="ico">😊</span><div class="sbar"><div class="sfill f-mood" id="bMood"></div></div><span class="val" id="vMood">0%</span></div>
-        <div class="stat"><span class="ico">⚡</span><div class="sbar"><div class="sfill f-en" id="bEn"></div></div><span class="val" id="vEn">0%</span></div>
-        <div class="stat"><span class="ico">🫧</span><div class="sbar"><div class="sfill f-hyg" id="bHyg"></div></div><span class="val" id="vHyg">0%</span></div>
       </div>
       <div class="actions">
         <button class="act" id="btnFeed" onclick="doAction('feed')">
@@ -503,6 +543,16 @@
     <!-- SHOP -->
     <section class="view" id="view-shop">
       <div class="card">
+        <h2>📦 Кейсы · <span id="chestsCoins">0</span>🪙 · <span id="chestsGems">0</span>💎</h2>
+        <div class="muted">Питомцы, монеты, еда, наряды и осколки. Что выпадет — решает сервер.</div>
+        <div id="chestsList" style="margin-top:10px"></div>
+      </div>
+      <div class="card">
+        <h2>🧩 Осколки питомцев</h2>
+        <div class="muted" id="fragsHint">Осколки 🧩 выпадают из 💎 Мифического сундука.</div>
+        <div id="fragsList" style="margin-top:6px"></div>
+      </div>
+      <div class="card">
         <h2>🛒 Магазин · <span id="shopCoins">0</span>🪙</h2>
         <div id="shopList"></div>
       </div>
@@ -520,20 +570,6 @@
       <div class="card">
         <h2>🎒 Инвентарь</h2>
         <div class="invline" id="invLine">пусто</div>
-      </div>
-    </section>
-
-    <!-- CHESTS -->
-    <section class="view" id="view-chests">
-      <div class="card">
-        <h2>📦 Сундуки · <span id="chestsCoins">0</span>🪙 · <span id="chestsGems">0</span>💎</h2>
-        <div class="muted">Питомцы, монеты, еда, наряды и осколки. Что выпадет — решает сервер.</div>
-        <div id="chestsList" style="margin-top:10px"></div>
-      </div>
-      <div class="card">
-        <h2>🧩 Осколки питомцев</h2>
-        <div class="muted" id="fragsHint">Осколки 🧩 выпадают из 💎 Мифического сундука.</div>
-        <div id="fragsList" style="margin-top:6px"></div>
       </div>
     </section>
 
@@ -578,6 +614,8 @@
     <section class="view" id="view-stats">
       <div class="card">
         <h2>📈 Прогресс</h2>
+        <div class="strow"><span>Имя</span><span class="v" id="stName">—</span></div>
+        <div class="strow"><span>Стадия</span><span class="v" id="stStage">—</span></div>
         <div class="strow"><span>Уровень</span><span class="v" id="prLevel">—</span></div>
         <div class="qbar" style="margin:4px 0 6px"><div class="qfill" id="prFill" style="width:0%"></div></div>
         <div class="qmeta" id="prXp">—</div>
@@ -585,25 +623,11 @@
         <div class="strow"><span>Класс</span><span class="v" id="prClass">—</span></div>
         <div class="qmeta" id="prClassDesc"></div>
         <div class="qmeta" id="prBoost" hidden></div>
-      </div>
-      <div class="card">
-        <h2>🖋 Скрытые таланты</h2>
-        <div class="qrow">
-          <div class="qt"><span>💪 Сила → <b>Воин ⚔️</b></span><span class="qr" id="hValP">0/20</span></div>
-          <div class="qbar"><div class="qfill f-p" id="hFillP" style="width:0%"></div></div>
-          <div class="qmeta">+15% монет в мини-играх</div>
-        </div>
-        <div class="qrow">
-          <div class="qt"><span>🧠 Ум → <b>Маг 🔮</b></span><span class="qr" id="hValIq">0/20</span></div>
-          <div class="qbar"><div class="qfill f-iq" id="hFillIq" style="width:0%"></div></div>
-          <div class="qmeta">+20% опыта за любые действия</div>
-        </div>
-        <div class="qrow">
-          <div class="qt"><span>✨ Харизма → <b>Аристократ 👑</b></span><span class="qr" id="hValCh">0/20</span></div>
-          <div class="qbar"><div class="qfill f-ch" id="hFillCh" style="width:0%"></div></div>
-          <div class="qmeta">−25% к скорости голода</div>
-        </div>
-        <div class="muted" style="margin-top:8px">Таланты растут от мини-игр (💪/🧠) и заботы (✨). Кто сильнее к моменту взросления — тот класс и достанется.</div>
+        <div class="strow"><span>Возраст</span><span class="v" id="stAge">—</span></div>
+        <div class="strow"><span>Очки ухода</span><span class="v" id="stCare">—</span></div>
+        <div class="strow"><span>Промахи в уходе</span><span class="v" id="stMiss">—</span></div>
+        <div class="strow"><span>Стрик посещений</span><span class="v" id="stStreak">—</span></div>
+        <div class="strow"><span>Наряд</span><span class="v" id="stWorn">—</span></div>
       </div>
       <div class="card">
         <h2>🏅 Ачивки</h2>
@@ -615,30 +639,15 @@
         <button class="copybtn" id="prestigeBtn" disabled>🏛 Зал Славы</button>
         <div class="muted" style="margin-top:6px">Взрослый питомец <b>30 уровня</b> уходит в Зал Славу навсегда: коллекция, монеты, 💎 и комната остаются, приходит новое яйцо с <b>+10% XP</b> на все будущие поколения.</div>
       </div>
-      <div class="card">
-        <h2>📊 Статистика</h2>
-        <div class="strow"><span>Имя</span><span class="v" id="stName">—</span></div>
-        <div class="strow"><span>Стадия</span><span class="v" id="stStage">—</span></div>
-        <div class="strow"><span>Возраст</span><span class="v" id="stAge">—</span></div>
-        <div class="strow"><span>Очки ухода</span><span class="v" id="stCare">—</span></div>
-        <div class="strow"><span>Промахи в уходе</span><span class="v" id="stMiss">—</span></div>
-        <div class="strow"><span>Стрик посещений</span><span class="v" id="stStreak">—</span></div>
-        <div class="strow"><span>Наряд</span><span class="v" id="stWorn">—</span></div>
-      </div>
-      <div class="card">
-        <h2>🧬 Эволюция</h2>
-        <div class="muted">Яйцо 🥚 → Малыш 🐣 (3 дня) → Подросток 😼 (7 дней) → взрослый: <b>Мудрец 🎓</b> (идеальный уход), <b>Красавец ✨</b> (хороший уход) или <b>Хулиган 😈</b> (много промахов).</div>
-      </div>
     </section>
   </main>
 
   <nav>
     <button class="tab active" onclick="showTab('home', this)"><span class="tico">🏠</span>Дом</button>
     <button class="tab" onclick="showTab('games', this)"><span class="tico">🎮</span>Игры</button>
-    <button class="tab" onclick="showTab('shop', this)"><span class="tico">🛒</span>Магазин</button>
-    <button class="tab" onclick="showTab('chests', this)"><span class="tico">📦</span>Сундуки</button>
+    <button class="tab" onclick="showTab('shop', this)"><span class="tico">📦</span>Кейсы</button>
     <button class="tab" onclick="showTab('friends', this)"><span class="tico">🎁</span>Друзья</button>
-    <button class="tab" onclick="showTab('stats', this)"><span class="tico">📊</span>Статы</button>
+    <button class="tab" onclick="showTab('stats', this)"><span class="tico">👤</span>Профиль</button>
   </nav>
 
   <!-- fullscreen game overlay -->
@@ -665,6 +674,7 @@
     <div class="rnbox">
       <div class="rntitle">Как зовут питомца?</div>
       <input class="rninput" id="rnInput" maxlength="15" placeholder="до 15 символов" autocomplete="off">
+      <div class="rnerr" id="rnErr" hidden>Максимальная длина имени - 15 символов.</div>
       <div class="rnrow">
         <button id="rnCancel" type="button">Отмена</button>
         <button id="rnSave" type="button" class="primary">Сохранить</button>
@@ -673,6 +683,18 @@
   </div>
 
   <div class="toast" id="toast"></div>
+
+  <!-- daily reward popup -->
+  <div id="dailyModal">
+    <div class="dnbox">
+      <div class="dntitle">🎁 Награда за вход</div>
+      <div class="dnstreak" id="dailyStreak">🔥 Стрик 1 · день 1 из 7</div>
+      <div id="dailyGrid"></div>
+      <div class="dnrow">
+        <button id="dailyClaim" type="button">🎉 Забрать</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -695,15 +717,17 @@ var SHOP = [
   {id:'hat',     title:'🎩 Шляпа',     price:50, kind:'accessory', desc:'наряд',                       ico:'hat.png'}
 ];
 var SPECIES_META = [
-  {id:'cat',          title:'🐱 Кот',          img:'pet.png',              faces:true},
-  {id:'dog',          title:'🐶 Щенок',        img:'pet_dog.png',          faces:false, where:'chest'},
-  {id:'bunny',        title:'🐰 Кролик',       img:'pet_bunny.png',        faces:false, where:'chest'},
-  {id:'hamster',      title:'🐹 Хомяк',        img:'pet_hamster.png',      faces:false, where:'chest'},
-  {id:'fox',          title:'🦊 Лисёнок',      img:'pet_fox.png',          faces:false, where:'chest'},
-  {id:'duck',         title:'🦆 Утёнок',       img:'pet_duck.png',         faces:false, where:'chest'},
-  {id:'panda',        title:'🐼 Панда',        img:'pet_panda.png',        faces:false, where:'chest'},
-  {id:'snow_leopard', title:'🐆 Снежный барс', img:'pet_snow_leopard.png', faces:false, where:'promo'}
+  {id:'cat',          title:'🐱 Кот',          img:'pet.png',              sleep:'pet_cat_sleep.png',          faces:true},
+  {id:'dog',          title:'🐶 Щенок',        img:'pet_dog.png',          sleep:'pet_dog_sleep.png',          faces:false, where:'chest'},
+  {id:'bunny',        title:'🐰 Кролик',       img:'pet_bunny.png',        sleep:'pet_bunny_sleep.png',        faces:false, where:'chest'},
+  {id:'hamster',      title:'🐹 Хомяк',        img:'pet_hamster.png',      sleep:'pet_hamster_sleep.png',      faces:false, where:'chest'},
+  {id:'fox',          title:'🦊 Лисёнок',      img:'pet_fox.png',          sleep:'pet_fox_sleep.png',          faces:false, where:'chest'},
+  {id:'duck',         title:'🦆 Утёнок',       img:'pet_duck.png',         sleep:'pet_duck_sleep.png',         faces:false, where:'chest'},
+  {id:'panda',        title:'🐼 Панда',        img:'pet_panda.png',        sleep:'pet_panda_sleep.png',        faces:false, where:'chest'},
+  {id:'snow_leopard', title:'🐆 Снежный барс', img:'pet_snow_leopard.png', sleep:'pet_snow_leopard_sleep.png', faces:false, where:'promo'}
 ];
+/* сон: опуск sleep-спрайта в % высоты холста 223×278 (= прозрачный отступ снизу минус отступ обычного спрайта) */
+var SLEEP_DROP = {cat:11.51, dog:13.67, bunny:5.04, hamster:10.43, fox:9.35, duck:8.27, panda:5.04, snow_leopard:11.87};
 var CASES_META = [
   {id:'simple', title:'📦 Обычный сундук', price:50, desc:'монеты, еда и первые питомцы',
    drops:['🪙 10–45 монет','🍎 2 яблока','🐟 Рыбка','🍰 Торт','💊 Лекарство','🎀 Бантик',
@@ -836,7 +860,12 @@ function render(p) {
   var sm = speciesMeta(p.species);
   $('eggBox').hidden = !isEgg;
   $('petWrap').hidden = isEgg;
-  $('petBase').src = '/assets/' + sm.img;
+  $('petBase').src = '/assets/' + (p.sleeping && sm.sleep ? sm.sleep : sm.img);
+  // sleep-спрайты нарисованы выше холста 223×278 (прозрачный отступ снизу) —
+  // опускаем на эту величину, чтобы питомец лежал на ковре, а не висел над ним
+  var drop = (!isEgg && p.sleeping && SLEEP_DROP[p.species]) || 0;
+  $('petBase').style.transform = drop ? 'translateY(' + drop + '%)' : '';
+  if (!isEgg && sm.sleep) { var warm = new Image(); warm.src = '/assets/' + sm.sleep; }
   $('petStatus').hidden = isEgg || !sm.faces;
   if (!isEgg) {
     $('petWrap').classList.toggle('sleeping', p.sleeping);
@@ -846,10 +875,10 @@ function render(p) {
   $('zzz').classList.toggle('show', p.sleeping);
   if (p.sick) bubble(p.name + ' заболел 🤒 — нужен 💊', 5000);
 
-  $('bSat').style.width = p.satiety + '%';  $('vSat').textContent = p.satiety + '%';
-  $('bMood').style.width = p.mood + '%';    $('vMood').textContent = p.mood + '%';
-  $('bEn').style.width = p.energy + '%';    $('vEn').textContent = p.energy + '%';
-  $('bHyg').style.width = p.hygiene + '%';  $('vHyg').textContent = p.hygiene + '%';
+  $('vSat').textContent = p.satiety + '%';
+  $('vMood').textContent = p.mood + '%';
+  $('vEn').textContent = p.energy + '%';
+  $('vHyg').textContent = p.hygiene + '%';
 
   var now = Math.floor(Date.now() / 1000);
   var foodCount = (p.inv.apple || 0) + (p.inv.fish || 0) + (p.inv.cake || 0);
@@ -869,8 +898,11 @@ function render(p) {
                                             : '+2🪙 · раз в 5 мин';
 
   $('btnPlay').disabled = isEgg || p.sleeping || p.energy < 10;
-  $('btnSleep').disabled = isEgg;
-  $('subSleep').textContent = p.sleeping ? 'разбудить ☀️' : '+3🪙/час';
+  // ночной сон (23:00–07:00) не прерывается вручную — кнопка заблокирована
+  $('btnSleep').disabled = isEgg || p.auto_sleep;
+  $('subSleep').textContent = p.sleeping
+    ? (p.auto_sleep ? '😴 до 7:00 утра' : 'разбудить ☀️')
+    : '+3🪙/час';
 
   $('btnPet').disabled = isEgg || petLeft > 0;
 
@@ -997,8 +1029,9 @@ function renderChests() {
     var btn = document.createElement('button');
     btn.className = 'buy';
     var gems = c.currency === 'gems';
-    btn.textContent = c.price + (gems ? '💎' : '🪙');
-    btn.disabled = !pet || (gems ? (pet.gems || 0) < c.price : pet.coins < c.price);
+    var free = !!pet && pet.pending_case === c.id;  // сундук из ежедневной награды
+    btn.textContent = free ? '🎁 Открыть' : (c.price + (gems ? '💎' : '🪙'));
+    btn.disabled = !pet || (!free && (gems ? (pet.gems || 0) < c.price : pet.coins < c.price));
     btn.onclick = function() { doAction('open_case', c.id); };
     head.appendChild(btn);
     box.appendChild(head);
@@ -1043,15 +1076,20 @@ function renderStats() {
   $('stWorn').textContent = wornItem ? wornItem.title : 'без наряда';
 }
 
+function localTz() {
+  // часы восточнее UTC (MSK = 3) — сервер считает локальный день пользователя по ним
+  return -new Date().getTimezoneOffset() / 60;
+}
+
 function apiState() {
-  return fetch('/api/state?initData=' + encodeURIComponent(INIT));
+  return fetch('/api/state?initData=' + encodeURIComponent(INIT) + '&tz=' + localTz());
 }
 
 function apiAction(action, arg) {
   return fetch('/api/pet', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ initData: INIT, action: action, arg: arg || '' })
+    body: JSON.stringify({ initData: INIT, action: action, arg: arg || '', tz: localTz() })
   });
 }
 
@@ -1077,6 +1115,7 @@ function doAction(action, arg) {
         if (arg || !$('view-home').classList.contains('active')) toast(data.message);
       }
       if (data.state) hap('light');
+      if (data.daily) showDaily(data.daily);
     });
   }).catch(function() {
     toast('Нет связи 😿 попробуй ещё раз');
@@ -1166,7 +1205,18 @@ function openRename() {
   if (!pet) return;
   $('rnInput').value = pet.name || '';
   $('renameModal').classList.add('open');
+  updateRenameUi();
   setTimeout(function() { $('rnInput').focus(); $('rnInput').select(); }, 50);
+}
+
+/* «Сохранить» подсвечена только при реально изменённом имени;
+   ошибка — когда ввод упёрся в лимит длины */
+function updateRenameUi() {
+  var raw = $('rnInput').value || '';
+  var name = raw.trim().replace(/\s+/g, ' ');
+  var changed = !!name && !!pet && name !== pet.name;
+  $('rnSave').classList.toggle('changed', changed);
+  $('rnErr').hidden = raw.length < NAME_MAX;
 }
 
 function closeRename() {
@@ -1695,7 +1745,7 @@ function renderProgress(p) {
   var cls = (META.classes || []).filter(function(x) { return x.id === p.cls; })[0];
   $('prClass').textContent = cls ? cls.title : 'пока без класса';
   $('prClassDesc').textContent = cls ? cls.desc
-    : ('Прокачай 💪/🧠/✨ до ' + 20 + ' — класс определится, когда питомец вырастет');
+    : ('Класс определится, когда питомец вырастет');
   var nowS = Math.floor(Date.now() / 1000);
   var boostEl = $('prBoost');
   if (p.boost_until && p.boost_until > nowS) {
@@ -1705,13 +1755,6 @@ function renderProgress(p) {
   } else {
     boostEl.hidden = true;
   }
-
-  [['p', 'hFillP', 'hValP'], ['iq', 'hFillIq', 'hValIq'], ['ch', 'hFillCh', 'hValCh']]
-    .forEach(function(r) {
-      var val = p[r[0]] || 0;
-      $(r[1]).style.width = Math.min(100, Math.round(val / 20 * 100)) + '%';
-      $(r[2]).textContent = val + '/20';
-    });
 
   var box = $('hallList');
   box.innerHTML = '';
@@ -1784,6 +1827,34 @@ function initProgress() {
   };
 }
 
+/* --- ежедневная награда за вход --- */
+var dailyShownKey = null;   // одна попап-сессия на награду: не показывать повторно
+
+function showDaily(daily) {
+  if (!daily || !(META.daily_rewards || []).length) return;
+  var key = daily.cycle_day + ':' + (pet ? pet.streak : 0);
+  if ($('dailyModal').classList.contains('open') || dailyShownKey === key) return;
+  dailyShownKey = key;
+  var grid = $('dailyGrid');
+  grid.innerHTML = '';
+  META.daily_rewards.forEach(function(r, i) {
+    var day = i + 1;
+    var cell = document.createElement('div');
+    cell.className = 'dcell';
+    if (day === daily.cycle_day) cell.className += ' today';
+    else if (day < daily.cycle_day) cell.className += ' done';
+    if (day === 7) cell.className += ' wide';
+    cell.innerHTML = '<div class="dday">День ' + day + '</div><div class="drw">' +
+      r.label + '</div>';
+    grid.appendChild(cell);
+  });
+  $('dailyStreak').textContent = '🔥 Стрик ' + (pet ? pet.streak : 1) +
+    ' · день ' + daily.cycle_day + ' из ' + META.daily_rewards.length;
+  $('dailyModal').classList.add('open');
+}
+
+function closeDaily() { $('dailyModal').classList.remove('open'); }
+
 function boot() {
   if (tg) {
     try { tg.ready(); tg.expand(); } catch (e) {}
@@ -1817,16 +1888,22 @@ function boot() {
       if (data.meta.friend && data.meta.friend.length) META.friend = data.meta.friend;
       if (typeof data.meta.energy_cost === 'number') META.energy_cost = data.meta.energy_cost;
       if (typeof data.meta.max_level === 'number') META.max_level = data.meta.max_level;
+      if (data.meta.daily_rewards && data.meta.daily_rewards.length) {
+        META.daily_rewards = data.meta.daily_rewards;
+      }
     }
     ACHV_PROG = data.achv_progress || {};
     $('btnRename').onclick = openRename;
     $('rnCancel').onclick = closeRename;
     $('rnSave').onclick = submitRename;
+    $('dailyClaim').onclick = closeDaily;
+    $('rnInput').addEventListener('input', updateRenameUi);
     $('rnInput').addEventListener('keydown', function(e) {
       if (e.key === 'Enter') submitRename();
       if (e.key === 'Escape') closeRename();
     });
     render(data.pet);
+    if (data.daily) showDaily(data.daily);
     initFriends();
     initProgress();
     setInterval(function() {
@@ -1835,6 +1912,7 @@ function boot() {
           if (d.pet) {
             ACHV_PROG = d.achv_progress || ACHV_PROG;
             render(d.pet);
+            if (d.daily) showDaily(d.daily);
           }
         }).catch(function() {});
     }, 30000);

@@ -5,7 +5,9 @@ from unittest import mock
 from game import engine
 from game.state import PetState
 
-T0 = 1_700_000_000
+# 2023-11-14 12:00:00 UTC: полдень, чтобы часовые окна базовых тестов
+# не пересекали ночное окно автосна 23:00–07:00
+T0 = 1_699_963_200
 HOUR = 3600
 DAY = 86400
 
@@ -109,8 +111,8 @@ class TestTick(unittest.TestCase):
         self.assertTrue(st.sick)
         self.assertIn('sick', events)
         # auto-heal after 24h adds exactly one care miss; the 25h decay window
-        # legitimately zeroes satiety (100-6*25<0) and hygiene (100-4*25<=0),
-        # adding two more misses -> 3 total
+        # (one night inside) legitimately zeroes satiety (17*6+8*9 > 100) and
+        # hygiene (25*4 = 100), adding two more misses -> 3 total
         st.sick_since = T0 + HOUR
         st.satiety = st.hygiene = st.mood = st.energy = 100.0
         events = engine.tick(st, T0 + HOUR + int(25 * 3600))
@@ -119,37 +121,168 @@ class TestTick(unittest.TestCase):
         self.assertIn('healed_auto', events)
 
 
+class TestAutoSleep(unittest.TestCase):
+    # ночное окно 23:00–07:00 по локальному времени (tz_offset — часов от UTC)
+    NIGHT = T0 + 11 * HOUR        # 23:00 UTC
+    MORNING = NIGHT + 8 * HOUR    # 07:00 следующего дня
+
+    def test_day_tick_does_not_sleep(self):
+        st = baby(T0 + 9 * HOUR)      # 21:00
+        engine.tick(st, T0 + 10 * HOUR)  # -> 22:00, до ночи
+        self.assertFalse(st.sleeping)
+        self.assertFalse(st.auto_sleep)
+
+    def test_falls_asleep_at_23(self):
+        st = baby(T0 + 10 * HOUR)     # 22:00
+        st.energy = 50.0
+        engine.tick(st, self.NIGHT)   # -> 23:00: час бодрствования, потом сон
+        self.assertAlmostEqual(st.satiety, 94.0)
+        self.assertAlmostEqual(st.energy, 46.0)
+        self.assertAlmostEqual(st.coins, 30.0)
+        self.assertTrue(st.sleeping)
+        self.assertTrue(st.auto_sleep)
+
+    def test_night_hour_regen_and_coins(self):
+        st = baby(self.NIGHT)
+        st.energy = 50.0
+        engine.tick(st, self.NIGHT + HOUR)  # час сна
+        self.assertAlmostEqual(st.satiety, 91.0)  # 9/ч во сне
+        self.assertAlmostEqual(st.energy, 60.0)
+        self.assertAlmostEqual(st.coins, 33.0)
+        self.assertTrue(st.sleeping)
+
+    def test_wakes_at_seven(self):
+        st = baby(self.NIGHT)
+        st.energy = 50.0
+        engine.tick(st, self.MORNING + HOUR)  # -> 08:00
+        self.assertFalse(st.sleeping)
+        self.assertFalse(st.auto_sleep)
+        # 8ч сна (23:00–07:00) + 1ч бодрствования
+        self.assertAlmostEqual(st.satiety, 100 - 8 * 9 - 6)
+        self.assertAlmostEqual(st.energy, 100.0)  # 50 + 80, обрезано до 100
+        self.assertAlmostEqual(st.coins, 30 + 8 * 3)
+
+    def test_tz_shifts_night(self):
+        # MSK = UTC+3: ночь 20:00–04:00 UTC, засыпает в 23:00 по местному
+        st = baby(T0 + 7 * HOUR)      # 19:00 UTC = 22:00 MSK
+        engine.tick(st, T0 + 8 * HOUR, tz_offset=3.0)  # 20:00 UTC = 23:00 MSK
+        self.assertTrue(st.sleeping)
+        self.assertTrue(st.auto_sleep)
+
+    def test_manual_sleep_is_not_cancelled(self):
+        st = baby(T0)                 # 12:00
+        st.sleeping = True            # уложили вручную днём
+        engine.tick(st, T0 + 2 * HOUR)  # 14:00, день — спит дальше
+        self.assertTrue(st.sleeping)
+        self.assertFalse(st.auto_sleep)
+        self.assertAlmostEqual(st.satiety, 82.0)  # 9/ч во сне
+        self.assertAlmostEqual(st.coins, 36.0)
+
+    def test_auto_sleep_blocks_manual_wake(self):
+        st = baby(self.NIGHT)
+        engine.tick(st, self.NIGHT + HOUR)
+        st, message, changed = engine.apply(st, 'sleep', '', self.NIGHT + HOUR)
+        self.assertFalse(changed)
+        self.assertIn('7:00', message)
+        self.assertTrue(st.sleeping)
+
+    def test_egg_does_not_auto_sleep(self):
+        st = PetState.create('Пуся', self.NIGHT)
+        engine.tick(st, self.NIGHT + HOUR)
+        self.assertFalse(st.sleeping)
+        self.assertFalse(st.auto_sleep)
+        self.assertAlmostEqual(st.satiety, 60.0)  # яйцу распад не страшен
+
+
 class TestStreak(unittest.TestCase):
+    # DAILY_REWARDS: 10, 20, cake, 70, golden case, 100, golden case
     def test_first_day_counts_and_rewards(self):
         st = baby()
-        bonus = engine.update_streak(st, T0)
+        reward = engine.update_streak(st, T0)
         self.assertEqual(st.streak, 1)
-        self.assertEqual(bonus, 10)
+        self.assertEqual(reward['coins'], 10)
+        self.assertEqual(reward['cycle_day'], 1)
+        self.assertEqual(st.coins, baby().coins + 10)
 
     def test_same_day_counted_once(self):
         st = baby()
         engine.update_streak(st, T0)
-        self.assertEqual(engine.update_streak(st, T0 + HOUR), 0)
+        self.assertIsNone(engine.update_streak(st, T0 + HOUR))
+        self.assertEqual(st.streak, 1)
 
     def test_consecutive_and_gap(self):
         st = baby()
         engine.update_streak(st, T0)
-        bonus = engine.update_streak(st, T0 + DAY)
+        reward = engine.update_streak(st, T0 + DAY)
         self.assertEqual(st.streak, 2)
-        self.assertEqual(bonus, 15)
+        self.assertEqual(reward['coins'], 20)
+        self.assertEqual(reward['cycle_day'], 2)
         # gap of 3 days resets
-        bonus = engine.update_streak(st, T0 + 5 * DAY)
+        reward = engine.update_streak(st, T0 + 5 * DAY)
         self.assertEqual(st.streak, 1)
-        self.assertEqual(bonus, 10)
+        self.assertEqual(reward['cycle_day'], 1)
 
-    def test_bonus_capped(self):
+    def test_cycle_wraps_to_day1_and_items(self):
         base = 1699920000  # 2023-11-14T00:00:00Z, day-aligned so dates stay consecutive
         st = baby()
         engine.update_streak(st, base + 3600)
-        for d in range(2, 15):
-            bonus = engine.update_streak(st, base + (d - 1) * DAY + 3600)
-        self.assertEqual(st.streak, 14)
-        self.assertEqual(bonus, 10 + 5 * 10)  # capped at 10-day step
+        for d in range(2, 9):
+            reward = engine.update_streak(st, base + (d - 1) * DAY + 3600)
+        self.assertEqual(st.streak, 8)
+        # день 8 цикла = снова день 1
+        self.assertEqual(reward['cycle_day'], 1)
+        self.assertEqual(reward['coins'], 10)
+
+    def test_day3_grants_cake_item(self):
+        base = 1699920000
+        st = baby()
+        engine.update_streak(st, base + 3600)
+        reward = engine.update_streak(st, base + DAY + 3600)
+        reward = engine.update_streak(st, base + 2 * DAY + 3600)
+        self.assertEqual(reward.get('item'), 'cake')
+        self.assertEqual(st.inv.get('cake'), 1)
+        self.assertEqual(st.pending_case, '')
+
+    def test_day5_grants_pending_golden_case(self):
+        base = 1699920000
+        st = baby()
+        for d in range(1, 6):
+            reward = engine.update_streak(st, base + (d - 1) * DAY + 3600)
+        self.assertEqual(reward.get('case'), 'golden')
+        self.assertEqual(st.pending_case, 'golden')
+
+    def test_tz_shifts_local_day(self):
+        base = 1699920000  # 00:00 UTC
+        st = baby()
+        # MSK (tz=+3): local day starts at 21:00 UTC of the previous date
+        reward = engine.update_streak(st, base + 3600, tz_offset=3)
+        self.assertIsNotNone(reward)  # 01:00 UTC = 04:00 MSK of 2023-11-14
+        self.assertIsNone(engine.update_streak(st, base + 2 * 3600, tz_offset=3))
+        # 23:00 UTC same real day = 02:00 MSK of 2023-11-15 -> next local day
+        reward = engine.update_streak(st, base + 23 * 3600, tz_offset=3)
+        self.assertEqual(st.streak, 2)
+        self.assertEqual(reward['cycle_day'], 2)
+        # UTC-10: first visit 01:00 UTC = 15:00 of 2023-11-13 local;
+        # 09:00 UTC is 23:00 of the same local day -> no new day
+        st2 = baby()
+        engine.update_streak(st2, base + 3600, tz_offset=-10)
+        self.assertIsNone(engine.update_streak(st2, base + 9 * 3600, tz_offset=-10))
+        self.assertEqual(st2.streak, 1)
+        # 23:00 UTC is 13:00 of 2023-11-14 local -> new day
+        reward = engine.update_streak(st2, base + 23 * 3600, tz_offset=-10)
+        self.assertEqual(st2.streak, 2)
+        self.assertEqual(reward['cycle_day'], 2)
+
+    def test_pending_case_opens_free(self):
+        st = baby()
+        coins_before = st.coins
+        st.pending_case = 'golden'
+        st, msg, changed = engine.apply(st, 'open_case', 'golden', T0)
+        self.assertTrue(changed)
+        self.assertIn('награда за вход', msg)
+        self.assertEqual(st.pending_case, '')
+        self.assertEqual(st.chests_total, 1)
+        self.assertEqual(st.coins, coins_before)  # цена не списана
 
 
 class TestApply(unittest.TestCase):

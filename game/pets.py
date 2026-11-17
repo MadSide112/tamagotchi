@@ -12,21 +12,22 @@ frame in the UI.
 """
 
 SPECIES = {
-    'cat':          {'title': '🐱 Кот',          'img': 'pet.png',              'faces': True},
+    'cat':          {'title': '🐱 Кот',          'img': 'pet.png',              'faces': True,
+                     'sleep': 'pet_cat_sleep.png'},
     'dog':          {'title': '🐶 Щенок',        'img': 'pet_dog.png',          'faces': False,
-                     'where': 'chest'},
+                     'sleep': 'pet_dog_sleep.png', 'where': 'chest'},
     'bunny':        {'title': '🐰 Кролик',       'img': 'pet_bunny.png',        'faces': False,
-                     'where': 'chest'},
+                     'sleep': 'pet_bunny_sleep.png', 'where': 'chest'},
     'hamster':      {'title': '🐹 Хомяк',        'img': 'pet_hamster.png',      'faces': False,
-                     'where': 'chest'},
+                     'sleep': 'pet_hamster_sleep.png', 'where': 'chest'},
     'fox':          {'title': '🦊 Лисёнок',      'img': 'pet_fox.png',          'faces': False,
-                     'where': 'chest'},
+                     'sleep': 'pet_fox_sleep.png', 'where': 'chest'},
     'duck':         {'title': '🦆 Утёнок',       'img': 'pet_duck.png',         'faces': False,
-                     'where': 'chest'},
+                     'sleep': 'pet_duck_sleep.png', 'where': 'chest'},
     'panda':        {'title': '🐼 Панда',        'img': 'pet_panda.png',        'faces': False,
-                     'where': 'chest'},
+                     'sleep': 'pet_panda_sleep.png', 'where': 'chest'},
     'snow_leopard': {'title': '🐆 Снежный барс', 'img': 'pet_snow_leopard.png', 'faces': False,
-                     'where': 'promo'},
+                     'sleep': 'pet_snow_leopard_sleep.png', 'where': 'promo'},
 }
 
 DEFAULT_SPECIES = 'cat'

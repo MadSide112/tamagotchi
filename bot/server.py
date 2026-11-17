@@ -30,7 +30,7 @@ from aiohttp import web
 from bot.security import validate_init_data
 from game import engine
 from game import progress
-from game.balance import CLASSES, FRIEND_ACC, MAX_LEVEL, MG_ENERGY_COST, QUEST_POOL
+from game.balance import CLASSES, DAILY_REWARDS, FRIEND_ACC, MAX_LEVEL, MG_ENERGY_COST, QUEST_POOL
 from game.cases import ui_meta as cases_ui_meta
 from game.minigames import games_meta
 from game.pets import SPECIES
@@ -139,19 +139,29 @@ def build_web_app(app, bot_token: str, webapp_html: str,
     def _auth(request: web.Request) -> Optional[int]:
         return validate_init_data(request.query.get('initData', ''), bot_token)
 
+    def _tz_hours(raw) -> float:
+        """Client timezone offset in hours east of UTC (e.g. MSK = 3)."""
+        try:
+            tz = float(raw)
+        except (TypeError, ValueError):
+            return 0.0
+        return max(-14.0, min(14.0, tz))
+
     @routes.get('/api/state')
     async def api_state(request: web.Request) -> web.Response:
         user_id = _auth(request)
         if user_id is None:
             return web.json_response({'error': 'unauthorized'}, status=401)
-        state, _ = await app.web_action(user_id, 'sync')
+        tz = _tz_hours(request.query.get('tz'))
+        state, _, daily = await app.web_action(user_id, 'sync', tz_offset=tz)
         if state is None:
             return web.json_response({'error': 'no pet',
                                       'hint': 'Отправь боту /start'}, status=404)
         # meta: справочники для UI (виды питомцев + дропы сундуков).
         # Промокоды здесь НЕ публикуются — активация только на сервере.
         species_meta = [{'id': sid, 'title': sp['title'], 'img': sp['img'],
-                         'faces': sp['faces'], 'where': sp.get('where', '')}
+                         'sleep': sp['sleep'], 'faces': sp['faces'],
+                         'where': sp.get('where', '')}
                         for sid, sp in SPECIES.items()]
         # прогресс ачивок (только чтение — метрики для UI)
         row = await app.db.get_pet(user_id)
@@ -159,6 +169,7 @@ def build_web_app(app, bot_token: str, webapp_html: str,
                          if row else {})
         return web.json_response({'pet': state, 'bot': app.bot_username,
                                   'achv_progress': achv_progress,
+                                  'daily': daily,
                                   'meta': {'species': species_meta,
                                            'cases': cases_ui_meta(),
                                            'games': games_meta(),
@@ -177,7 +188,8 @@ def build_web_app(app, bot_token: str, webapp_html: str,
                                                {'id': fid, 'title': f['title'],
                                                 'need': f['need']}
                                                for fid, f in FRIEND_ACC.items()],
-                                           'max_level': MAX_LEVEL}})
+                                           'max_level': MAX_LEVEL,
+                                           'daily_rewards': DAILY_REWARDS}})
 
     @routes.get('/api/top')
     async def api_top(request: web.Request) -> web.Response:
@@ -203,11 +215,12 @@ def build_web_app(app, bot_token: str, webapp_html: str,
         if action not in engine.ACTIONS:
             return web.json_response({'error': 'unknown action'}, status=400)
         arg = str(body.get('arg') or '')[:32]
-        state, message = await app.web_action(user_id, action, arg)
+        tz = _tz_hours(body.get('tz'))
+        state, message, daily = await app.web_action(user_id, action, arg, tz_offset=tz)
         if state is None:
             return web.json_response({'error': 'no pet',
                                       'hint': 'Отправь боту /start'}, status=404)
-        return web.json_response({'state': state, 'message': message})
+        return web.json_response({'state': state, 'message': message, 'daily': daily})
 
     application = web.Application()
     application.add_routes(routes)

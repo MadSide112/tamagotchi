@@ -25,6 +25,8 @@ class PetState:
     energy: float = 60.0    # 0..100
     hygiene: float = 80.0   # 0..100, low hygiene -> sickness chance
     sleeping: bool = False
+    auto_sleep: bool = False  # True, если сон включён автоматически (ночь 23:00–07:00)
+    tz_offset: float = 0.0   # пояс пользователя (часов к востоку от UTC); запоминается с последнего визита в Mini App
     sick: bool = False
     sick_since: int = 0     # unix ts when current sickness started
     stage: int = 0          # 0 egg, 1 baby, 2 teen, 3 wise, 4 beauty, 5 hooligan
@@ -40,7 +42,7 @@ class PetState:
     acc: List[str] = field(default_factory=list)       # owned accessory ids
     worn: str = ''          # worn accessory id ('' = none)
     streak: int = 0         # consecutive daily-visit days
-    streak_day: str = ''    # UTC YYYY-MM-DD of the last counted day
+    streak_day: str = ''    # YYYY-MM-DD of the last counted day (user local day; UTC in chat)
     ref_by: int = 0         # user id of the referrer, 0 = none
     species: str = DEFAULT_SPECIES  # active look id (game.pets.SPECIES)
     pets: List[str] = field(default_factory=lambda: [DEFAULT_SPECIES])  # owned looks
@@ -64,6 +66,7 @@ class PetState:
     mg_games: int = 0       # мини-игр за день
     games_total: int = 0    # мини-игр за всё время
     chests_total: int = 0   # сундуков открыто за всё время
+    pending_case: str = ''  # id бесплатного сундука из ежедневной награды (ждёт открытия)
     q_day: str = ''         # день выдачи текущих квестов
     quests: List[list] = field(default_factory=list)    # [id, need, prog] x3
     q_claimed: int = 0      # награда за квесты дня уже получена
@@ -97,6 +100,8 @@ class PetState:
             'cn': int(round(self.coins)),
             'cs': self.care_score,
             'cm': self.care_miss,
+            'as': 1 if self.auto_sleep else 0,
+            'tz': self.tz_offset,
             'iv': self.inv,
             'ao': self.acc,
             'wn': self.worn,
@@ -124,6 +129,7 @@ class PetState:
             'mn': self.mg_games,
             'gt': self.games_total,
             'ct': self.chests_total,
+            'pc': self.pending_case,
             'qd': self.q_day,
             'ql': self.quests,
             'qc': self.q_claimed,
@@ -155,6 +161,7 @@ class PetState:
             'energy': round(self.energy),
             'hygiene': round(self.hygiene),
             'sleeping': self.sleeping,
+            'auto_sleep': self.auto_sleep,
             'sick': self.sick,
             'stage': self.stage,
             'born': self.born,
@@ -187,6 +194,7 @@ class PetState:
             'mg_games': self.mg_games,
             'games_total': self.games_total,
             'chests_total': self.chests_total,
+            'pending_case': self.pending_case,
             'quests': [list(q) for q in self.quests],
             'q_claimed': self.q_claimed,
             'boost_until': self.boost_until,
@@ -299,6 +307,8 @@ class PetState:
             energy=num('e', 60.0, 0.0, 100.0),
             hygiene=num('hy', 80.0, 0.0, 100.0),
             sleeping=bool(d.get('sl', 0)),
+            auto_sleep=bool(d.get('as', 0)),
+            tz_offset=float(d.get('tz', 0) or 0),
             sick=bool(d.get('sk', 0)),
             sick_since=int_or('ss', 0),
             stage=max(0, min(5, stage)),
@@ -337,6 +347,7 @@ class PetState:
             mg_games=max(0, min(int_or('mn', 0), 999)),
             games_total=max(0, min(int_or('gt', 0), 1_000_000)),
             chests_total=max(0, min(int_or('ct', 0), 1_000_000)),
+            pending_case=str(d.get('pc', ''))[:16],
             q_day=str(d.get('qd', ''))[:10],
             quests=clean_quests,
             q_claimed=1 if d.get('qc', 0) else 0,

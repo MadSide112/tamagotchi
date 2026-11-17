@@ -19,6 +19,10 @@ SICK_ENERGY_EXTRA_PER_HOUR = 6.0
 
 LOW_STAT_THRESHOLD = 25.0
 
+# --- auto sleep: pet sleeps 23:00–07:00 by the user's local time ---
+NIGHT_START_HOUR = 23.0
+NIGHT_END_HOUR = 7.0
+
 # --- actions ---
 HATCH_MOOD_GAIN = 10.0
 PLAY_MOOD_GAIN = 18.0
@@ -35,9 +39,15 @@ SCAVENGE_COOLDOWN_SECONDS = 180   # foraging is limited to once per 3 minutes
 START_COINS = 30
 START_APPLES = 3
 SLEEP_COINS_PER_HOUR = 3.0        # pet earns while sleeping
-STREAK_BONUS_BASE = 10            # first day
-STREAK_BONUS_STEP = 5             # each consecutive day
-STREAK_BONUS_CAP_DAYS = 10        # bonus stops growing after N days
+DAILY_REWARDS = [                 # цикл 7 дней: награда за первый вход в сутки
+    {'coins': 10,      'label': '+10 🪙'},
+    {'coins': 20,      'label': '+20 🪙'},
+    {'item': 'cake',   'n': 1, 'label': '🍰 Торт'},
+    {'coins': 70,      'label': '+70 🪙'},
+    {'case': 'golden', 'label': '🧰 Золотой сундук'},
+    {'coins': 100,     'label': '+100 🪙'},
+    {'case': 'golden', 'label': '🧰 Золотой сундук'},
+]
 REF_BONUS = 50                    # both referrer and invitee
 
 SHOP = {

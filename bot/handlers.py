@@ -225,13 +225,13 @@ class App:
                 return
             now = int(time.time())
             st = PetState.from_json(row['state'])
-            engine.tick(st, now)
-            bonus = engine.update_streak(st, now)
+            engine.tick(st, now, st.tz_offset)
+            reward = engine.update_streak(st, now)
             st, message, changed = engine.apply(st, action, arg, now)
             if changed:
                 st.rev += 1
-                if bonus:
-                    message = '%s\n🔥 Стрик %d: +%d🪙' % (message, st.streak, bonus)
+                if reward:
+                    message = '%s\n🔥 Стрик %d: %s' % (message, st.streak, reward['label'])
                 if row['message_id']:
                     try:
                         await self.api.edit_widget_data(chat_id, row['message_id'],
@@ -246,48 +246,57 @@ class App:
     async def _action(self, user_id: int, chat_id: int, action: str, arg: str = '') -> None:
         await self._run_action(user_id, chat_id, action, arg)
 
-    async def web_action(self, user_id: int, action: str, arg: str = ''):
+    async def web_action(self, user_id: int, action: str, arg: str = '',
+                         tz_offset: float = 0):
         """Care action coming from the Mini App (authenticated via initData).
 
         Same pipeline as chat commands (tick, streak, apply, save, widget edit),
         but without Telegram messages: the HTTP response carries the result.
-        Returns (public_state_dict, message) or (None, hint) when no pet exists.
+        Returns (public_state_dict, message, daily) where daily is the reward
+        granted for today's first visit (or None), or (None, hint, None)
+        when no pet exists.
         """
         async with self._lock(user_id):
             row = await self.db.get_pet(user_id)
             if row is None:
-                return None, 'Сначала заведи питомца: /start 🐣'
+                return None, 'Сначала заведи питомца: /start 🐣', None
             now = int(time.time())
             st = PetState.from_json(row['state'])
-            events = engine.tick(st, now)
-            bonus = engine.update_streak(st, now)
+            st.tz_offset = tz_offset   # запоминаем пояс для ночных тиков из чата
+            events = engine.tick(st, now, tz_offset)
+            reward = engine.update_streak(st, now, tz_offset)
+            if reward:
+                # награда за вход сохраняется сразу: часть действий выходит
+                # раньше хвоста (визит, промокод) и не сохраняет состояние
+                await self.db.save_pet(user_id, row['chat_id'], row['message_id'],
+                                       st.to_json(), row['warn_ts'], row['sick_warn'], now)
             if action == 'visit':
                 st, message = await self._visit(user_id, st, row, arg, now)
-                return st.web_dict(), message
+                return st.web_dict(), message, reward
             if action == 'promo':
                 arg = promo_normalize(arg)
                 if not arg:
-                    return st.web_dict(), 'Введи промокод'
+                    return st.web_dict(), 'Введи промокод', reward
                 if await self.db.promo_redeemed(user_id, arg):
-                    return st.web_dict(), 'Этот промокод уже активирован 🙈'
+                    return st.web_dict(), 'Этот промокод уже активирован 🙈', reward
                 pdata = PROMO_CODES.get(arg)
                 if pdata and 'active_until' in pdata:
                     deadline = calendar.timegm(
                         time.strptime(pdata['active_until'], '%Y-%m-%d')) + 86400
                     if now >= deadline:
-                        return st.web_dict(), 'Срок действия этого промокода истёк.'
+                        return st.web_dict(), 'Срок действия этого промокода истёк.', reward
                 if pdata and 'max_uses' in pdata:
                     if await self.db.promo_uses(arg) >= pdata['max_uses']:
-                        return st.web_dict(), 'Лимит активаций этого промокода исчерпан.'
+                        return st.web_dict(), 'Лимит активаций этого промокода исчерпан.', reward
             st, message, changed = engine.apply(st, action, arg, now)
             if changed:
                 st.rev += 1
                 if action == 'promo':
                     await self.db.promo_mark(user_id, arg, now)
                     await self.db.promo_inc(arg)
-            if bonus:
+            if reward:
                 message = (message + '\n' if message else '') + \
-                    '🔥 Стрик %d: +%d🪙' % (st.streak, bonus)
+                    '🔥 Стрик %d: %s' % (st.streak, reward['label'])
                 changed = True
             if row['message_id'] and changed:
                 try:
@@ -297,7 +306,7 @@ class App:
                     log.warning('editMessageWidgetData failed: %s', err.description)
             await self.db.save_pet(user_id, row['chat_id'], row['message_id'],
                                    st.to_json(), row['warn_ts'], row['sick_warn'], now)
-            return st.web_dict(), message
+            return st.web_dict(), message, reward
 
     # --- /start flow --------------------------------------------------------
 
@@ -311,7 +320,7 @@ class App:
                 if row['message_id']:
                     await self.api.delete_message(chat_id, row['message_id'])
                 st = PetState.from_json(row['state'])
-                engine.tick(st, now)
+                engine.tick(st, now, st.tz_offset)
             else:
                 st = PetState.create('Пуся', now, START_COINS, {'apple': START_APPLES})
                 if ref_id and ref_id != user_id and await self.db.get_pet(ref_id):
@@ -606,7 +615,7 @@ class App:
                 return
             now = int(time.time())
             st = PetState.from_json(row['state'])
-            engine.tick(st, now)
+            engine.tick(st, now, st.tz_offset)
             st.name = name
             st.rev += 1
             state_json = st.to_json()
@@ -624,7 +633,7 @@ class App:
                 return
             now = int(time.time())
             st = PetState.from_json(row['state'])
-            engine.tick(st, now)
+            engine.tick(st, now, st.tz_offset)
             await self.db.save_pet(user_id, chat_id, row['message_id'], st.to_json(),
                                    row['warn_ts'], row['sick_warn'], now)
             worn = (' · ' + SHOP[st.worn]['title']) if st.worn else ''
@@ -671,18 +680,18 @@ class App:
 
             now = int(time.time())
             st = PetState.from_json(row['state'])
-            events = engine.tick(st, now)
-            bonus = engine.update_streak(st, now)
+            events = engine.tick(st, now, st.tz_offset)
+            reward = engine.update_streak(st, now)
             message = ''
             changed = False
             if action != 'sync':
                 st, message, changed = engine.apply(st, action, '', now)
                 if changed:
                     st.rev += 1
-            if bonus:
+            if reward:
                 changed = True
                 message = (message + '\n' if message else '') + \
-                    '🔥 Стрик %d: +%d🪙' % (st.streak, bonus)
+                    '🔥 Стрик %d: %s' % (st.streak, reward['label'])
 
             state_json = st.to_json()
 
