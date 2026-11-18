@@ -192,7 +192,8 @@ def tick(st: PetState, now: int, tz_offset: float = 0) -> List[str]:
             mood_dec += SICK_MOOD_EXTRA_PER_HOUR * hours
         st.mood = _clamp(st.mood - mood_dec)
         if st.sick:
-            st.energy = _clamp(st.energy - SICK_ENERGY_EXTRA_PER_HOUR * hours)
+            # болезнь давит на силы только пока питомец не спит
+            st.energy = _clamp(st.energy - SICK_ENERGY_EXTRA_PER_HOUR * awake_h)
 
         # sickness roll (a sick pet cannot catch a new disease)
         if not st.sick:

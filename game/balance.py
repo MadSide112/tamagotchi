@@ -9,7 +9,7 @@ adult branch, but never runs away or dies.
 # --- stat decay / regen per hour ---
 HUNGER_DECAY_PER_HOUR = 6.0
 HUNGER_DECAY_SLEEP_PER_HOUR = 9.0
-ENERGY_REGEN_SLEEP_PER_HOUR = 10.0
+ENERGY_REGEN_SLEEP_PER_HOUR = 18.0  # 8ч ночи = +144: полное восстановление за ночь
 ENERGY_DECAY_PER_HOUR = 4.0
 HYGIENE_DECAY_PER_HOUR = 4.0
 MOOD_DECAY_PER_HOUR = 4.0

@@ -42,9 +42,25 @@ class TestTick(unittest.TestCase):
         st.sleeping = True
         st.energy = 50.0
         engine.tick(st, T0 + HOUR)
-        self.assertAlmostEqual(st.energy, 60.0)
+        self.assertAlmostEqual(st.energy, 68.0)
         self.assertAlmostEqual(st.satiety, 91.0)
         self.assertAlmostEqual(st.coins, 33.0)  # 30 + 3/h sleep income
+
+    def test_sick_sleep_regens_without_penalty(self):
+        st = baby()
+        st.sleeping = True
+        st.sick = True
+        st.energy = 50.0
+        engine.tick(st, T0 + HOUR)
+        # болезнь не жрёт энергию во сне: реген как у здорового
+        self.assertAlmostEqual(st.energy, 68.0)
+
+    def test_sick_awake_drains_energy_extra(self):
+        st = baby()
+        st.sick = True
+        st.energy = 50.0
+        engine.tick(st, T0 + HOUR)
+        self.assertAlmostEqual(st.energy, 40.0)  # 50 − 4 бодрость − 6 болезнь
 
     def test_low_satiety_speeds_mood_decay(self):
         st = baby()
@@ -147,7 +163,7 @@ class TestAutoSleep(unittest.TestCase):
         st.energy = 50.0
         engine.tick(st, self.NIGHT + HOUR)  # час сна
         self.assertAlmostEqual(st.satiety, 91.0)  # 9/ч во сне
-        self.assertAlmostEqual(st.energy, 60.0)
+        self.assertAlmostEqual(st.energy, 68.0)
         self.assertAlmostEqual(st.coins, 33.0)
         self.assertTrue(st.sleeping)
 
@@ -159,7 +175,7 @@ class TestAutoSleep(unittest.TestCase):
         self.assertFalse(st.auto_sleep)
         # 8ч сна (23:00–07:00) + 1ч бодрствования
         self.assertAlmostEqual(st.satiety, 100 - 8 * 9 - 6)
-        self.assertAlmostEqual(st.energy, 100.0)  # 50 + 80, обрезано до 100
+        self.assertAlmostEqual(st.energy, 100.0)  # 50 + 144, обрезано до 100
         self.assertAlmostEqual(st.coins, 30 + 8 * 3)
 
     def test_tz_shifts_night(self):
